@@ -8,35 +8,29 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# def pin_to_ipfs(data):
-# 	assert isinstance(data,dict), f"Error pin_to_ipfs expects a dictionary"
-# 	#YOUR CODE HERE
-# 	response = requests.post("https://api.pinata.cloud/pinning/pinJSONToIPFS", headers=headers, data=json.dumps(data))
-# 	cid = response.json()['IpfsHash']
-# 	print(f"Pinned to IPFS: {cid}")
-
-# 	return cid
-
-
 def pin_to_ipfs(data):
-    assert isinstance(data, dict), f"Error pin_to_ipfs expects a dictionary"
+    assert isinstance(data, dict), f"Error pin_to_ipfs expects a dictionary, but received {type(data)}"
+    print(f"Attempting to pin data: {data}")
     try:
-        response = requests.post("https://api.pinata.cloud/pinning/pinJSONToIPFS", headers=headers, data=json.dumps(data))
-        response.raise_for_status()  # Raises an HTTPError for bad responses
+        response = requests.post("https://api.pinata.cloud/pinning/pinJSONToIPFS", headers=headers, json=data)
+        response.raise_for_status()
         result = response.json()
+        print(f"Pinata API response: {result}")
         if 'IpfsHash' not in result:
             raise KeyError("'IpfsHash' not found in the response")
         cid = result['IpfsHash']
-        print(f"Pinned to IPFS: {cid}")
+        print(f"Successfully pinned to IPFS. CID: {cid}")
         return cid
     except requests.exceptions.RequestException as e:
         print(f"Error making request to Pinata: {e}")
-        print(f"Response content: {response.text}")
+        print(f"Response content: {response.text if 'response' in locals() else 'No response'}")
     except json.JSONDecodeError:
-        print(f"Error decoding JSON response: {response.text}")
+        print(f"Error decoding JSON response: {response.text if 'response' in locals() else 'No response'}")
     except KeyError as e:
         print(f"Error accessing response data: {e}")
-        print(f"Full response: {result}")
+        print(f"Full response: {result if 'result' in locals() else 'No result'}")
+    
+    print("Failed to pin data to IPFS. Returning None.")
     return None
 
 def get_from_ipfs(cid, content_type="json"):
@@ -45,6 +39,7 @@ def get_from_ipfs(cid, content_type="json"):
         return None
 
     assert isinstance(cid, str), f"get_from_ipfs accepts a cid in the form of a string, but received {type(cid)}"
+    print(f"Attempting to retrieve data for CID: {cid}")
     
     try:
         response = requests.get(f"https://gateway.pinata.cloud/ipfs/{cid}")
@@ -55,7 +50,7 @@ def get_from_ipfs(cid, content_type="json"):
         else:
             data = response.text
         
-        print(f"Got from IPFS: {data}")
+        print(f"Successfully retrieved data from IPFS: {data}")
         
         if content_type == "json":
             assert isinstance(data, dict), f"get_from_ipfs should return a dict for JSON content type, but got {type(data)}"
@@ -70,4 +65,5 @@ def get_from_ipfs(cid, content_type="json"):
         print(f"Assertion error: {e}")
         print(f"Received data: {data if 'data' in locals() else 'No data'}")
     
+    print("Failed to retrieve data from IPFS. Returning None.")
     return None
