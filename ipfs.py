@@ -35,6 +35,7 @@ def pin_to_ipfs(data):
 
 
 def get_from_ipfs(cid, content_type="json"):
+    print(cid)
     if cid is None:
         print("Error: CID is None. This might indicate a problem with pin_to_ipfs().")
         return None
