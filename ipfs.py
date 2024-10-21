@@ -1,21 +1,24 @@
 import requests
 import json
 
-
 # Define headers with your Pinata API credentials
 headers = {
-    "Authorization": "Bearer 242eab8dfa2af3b47a64",
-    "Content-Type": "application/json"
+    'pinata_api_key': '4dd854686002eb88d954',  # Replace with your actual API key
+    'pinata_secret_api_key': 'ff88b043e1abcf32adcb15356821fd0fd20679aa6d4ebfde6f539681f02c9fbf',  # Replace with your actual secret API key
+    'Content-Type': 'application/json'
 }
 
+# Function to pin data to IPFS using Pinata
 def pin_to_ipfs(data):
     assert isinstance(data, dict), f"Error pin_to_ipfs expects a dictionary, but received {type(data)}"
     print(f"Attempting to pin data: {data}")
     try:
+        # Make the request to Pinata to pin the data to IPFS
         response = requests.post("https://api.pinata.cloud/pinning/pinJSONToIPFS", headers=headers, json=data)
-        response.raise_for_status()
+        response.raise_for_status()  # Raise an error for HTTP issues
         result = response.json()
-        print(f"Pinata API response: {result}")
+
+        # Check if 'IpfsHash' is in the response
         if 'IpfsHash' not in result:
             raise KeyError("'IpfsHash' not found in the response")
         cid = result['IpfsHash']
@@ -35,7 +38,6 @@ def pin_to_ipfs(data):
 
 
 def get_from_ipfs(cid, content_type="json"):
-    print(cid)
     if cid is None:
         print("Error: CID is None. This might indicate a problem with pin_to_ipfs().")
         return None
@@ -73,3 +75,4 @@ def get_from_ipfs(cid, content_type="json"):
         print(f"Unexpected error: {e}")
     
     return None
+
