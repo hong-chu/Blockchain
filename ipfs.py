@@ -46,25 +46,28 @@ def get_from_ipfs(cid, content_type="json"):
     try:
         print(f"Attempting to retrieve data for CID: {cid}")
         response = requests.get(f"https://gateway.pinata.cloud/ipfs/{cid}")
-        response.raise_for_status()
-        
+        response.raise_for_status()  # Raise an error for HTTP issues
+
+        # Handle different content types
         if content_type == "json":
-            data = response.json()
+            try:
+                data = response.json()  # Try to parse as JSON
+                print(f"Successfully retrieved JSON data from IPFS: {data}")
+                if not isinstance(data, dict):
+                    print(f"Warning: Retrieved data is not a dictionary. Type: {type(data)}")
+                return data
+            except json.JSONDecodeError:
+                print(f"Error: Failed to decode JSON from the response. Response content: {response.text}")
+                return None
         else:
-            data = response.text
-        
-        print(f"Successfully retrieved data from IPFS: {data}")
-        
-        if content_type == "json":
-            if not isinstance(data, dict):
-                print(f"Warning: Retrieved data is not a dictionary. Type: {type(data)}")
-        
-        return data
+            # For non-JSON content types (e.g., text, binary)
+            data = response.content  # Get the raw content
+            print(f"Successfully retrieved raw data from IPFS. Content type: {content_type}")
+            return data
+
     except requests.exceptions.RequestException as e:
         print(f"Error making request to IPFS gateway: {e}")
         print(f"Response content: {response.text if 'response' in locals() else 'No response'}")
-    except json.JSONDecodeError:
-        print(f"Error decoding JSON response: {response.text if 'response' in locals() else 'No response'}")
     except Exception as e:
         print(f"Unexpected error: {e}")
     
