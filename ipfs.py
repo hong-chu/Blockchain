@@ -1,6 +1,15 @@
 import requests
 import json
 
+
+# Define headers with your Pinata API credentials
+headers = {
+    'pinata_api_key': '242eab8dfa2af3b47a64',  # Replace with your actual API key
+    'Content-Type': 'application/json'
+}
+
+
+
 def pin_to_ipfs(data):
 	assert isinstance(data,dict), f"Error pin_to_ipfs expects a dictionary"
 	#YOUR CODE HERE
