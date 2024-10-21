@@ -28,7 +28,8 @@ def connect_with_middleware(contract_json):
 
 	# TODO complete this method
 	# The first section will be the same as "connect_to_eth()" but with a BNB url
-    bnb_url = "https:///v3/42f8c4888a8246e8bbce242a2b8004a5"
+    # bnb_url = "https:///v3/42f8c4888a8246e8bbce242a2b8004a5"
+    bnb_url = "https://bsc-rpc.publicnode.com"
     w3 = Web3(HTTPProvider(bnb_url))
 
     # Inject middleware
