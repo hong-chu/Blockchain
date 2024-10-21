@@ -35,27 +35,37 @@ def pin_to_ipfs(data):
 
 
 def get_from_ipfs(cid, content_type="json"):
-    assert isinstance(cid, str), f"get_from_ipfs accepts a cid in the form of a string"
+    if cid is None:
+        print("Error: CID is None. This might indicate a problem with pin_to_ipfs().")
+        return None
+
+    if not isinstance(cid, str):
+        print(f"Error: CID must be a string, but received {type(cid)}")
+        return None
+
     try:
+        print(f"Attempting to retrieve data for CID: {cid}")
         response = requests.get(f"https://gateway.pinata.cloud/ipfs/{cid}")
-        response.raise_for_status()  # Raises an HTTPError for bad responses
+        response.raise_for_status()
         
         if content_type == "json":
             data = response.json()
         else:
             data = response.text
         
-        print(f"Got from IPFS: {data}")
+        print(f"Successfully retrieved data from IPFS: {data}")
         
         if content_type == "json":
-            assert isinstance(data, dict), f"get_from_ipfs should return a dict for JSON content type"
+            if not isinstance(data, dict):
+                print(f"Warning: Retrieved data is not a dictionary. Type: {type(data)}")
         
         return data
     except requests.exceptions.RequestException as e:
         print(f"Error making request to IPFS gateway: {e}")
+        print(f"Response content: {response.text if 'response' in locals() else 'No response'}")
     except json.JSONDecodeError:
-        print(f"Error decoding JSON response: {response.text}")
-    except AssertionError as e:
-        print(f"Assertion error: {e}")
+        print(f"Error decoding JSON response: {response.text if 'response' in locals() else 'No response'}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
     
-    return None  # Return None only if an exception occurred
+    return None
