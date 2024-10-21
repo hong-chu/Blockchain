@@ -43,8 +43,14 @@ def connect_with_middleware(contract_json):
     # contract = w3.eth.contract(address=Web3.to_checksum_address(address), abi=abi)
 
     contract = w3.eth.contract(address=address, abi=abi)
-    return w3, contract
 
+    try:
+        result = contract.functions.someViewFunction().call()
+        print(f"Successfully called contract function. Result: {result}")
+    except Exception as e:
+        print(f"Error calling contract function: {str(e)}")
+	
+    return w3, contract
 
 if __name__ == "__main__":
 	connect_to_eth()
