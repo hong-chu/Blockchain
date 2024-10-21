@@ -20,27 +20,28 @@ def connect_to_eth():
 
 
 def connect_with_middleware(contract_json):
-	with open(contract_json, "r") as f:
-		d = json.load(f)
-		d = d['bsc']
-		address = d['address']
-		abi = d['abi']
+    with open(contract_json, "r") as f:
+        d = json.load(f)
+        d = d['bsc']
+        address = d['address']
+        abi = d['abi']
 
-	# connect to BNB url
-	url = "https://bsc-dataseed1.binance.org/"
-	w3 = Web3(HTTPProvider(url))
-	assert w3.is_connected(), f"Failed to connect to provider at {url}"
+	# TODO complete this method
+	# The first section will be the same as "connect_to_eth()" but with a BNB url
+    bnb_url = "https://bsc-dataseed1.binance.org/"
+    w3 = Web3(HTTPProvider(bnb_url))
 
-        print(f"Connected to BNB testnet: {w3.is_connected()}")
-        if w3.is_connected():
-            print(f"Chain ID: {w3.eth.chain_id}")
-        else:
-            print("Failed to connect to the BNB testnet")
-	
-	# inject middleware
-	w3.middleware_stack.inject(geth_poa_middleware, layer=0)
-	
-	# connect to a contract called “MerkleValidator”
-	contract = w3.eth.contract(address=address, abi=abi)
+    # Inject middleware
+    w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+    assert w3.is_connected(), f"Failed to connect to BNB provider at {bnb_url}"
 
-	return w3, contract
+	# The second section requires you to inject middleware into your w3 object and
+	# create a contract object. Read more on the docs pages at https://web3py.readthedocs.io/en/stable/middleware.html
+	# and https://web3py.readthedocs.io/en/stable/web3.contract.html
+    contract = w3.eth.contract(address=address, abi=abi)
+
+    return w3, contract
+
+
+if __name__ == "__main__":
+	connect_to_eth()
