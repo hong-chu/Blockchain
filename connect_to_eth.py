@@ -20,37 +20,52 @@ def connect_to_eth():
 
 
 def connect_with_middleware(contract_json):
+def connect_with_middleware(contract_json):
     with open(contract_json, "r") as f:
         d = json.load(f)
         d = d['bsc']
         address = d['address']
         abi = d['abi']
+    
+    print(f"Contract address: {address}")
+    print(f"ABI length: {len(abi)}")
 
-	# TODO complete this method
-	# The first section will be the same as "connect_to_eth()" but with a BNB url
-    print(d)
-    # bnb_url = "https://data-seed-prebsc-1-s3.bnbchain.org:8545"
-    bnb_url = "https://bsc-dataseed1.binance.org/"
-    w3 = Web3(HTTPProvider(bnb_url))
-    assert w3.is_connected(), f"Failed to connect to BNB provider at {bnb_url}"
+    # connect to BNB testnet url
+    url = "https://data-seed-prebsc-1-s1.binance.org:8545/"  # BNB testnet URL
+    w3 = Web3(Web3.HTTPProvider(url))
+    
+    print(f"Connected to BNB testnet: {w3.is_connected()}")
+    if w3.is_connected():
+        print(f"Chain ID: {w3.eth.chain_id}")
+    else:
+        print("Failed to connect to the BNB testnet")
+        return None, None
 
-    # Inject middleware
+    # inject middleware
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-
-    # The second section requires you to inject middleware into your w3 object and
-    # create a contract object. Read more on the docs pages at https://web3py.readthedocs.io/en/stable/middleware.html
-    # and https://web3py.readthedocs.io/en/stable/web3.contract.html
-    # contract = w3.eth.contract(address=Web3.to_checksum_address(address), abi=abi)
-
+    
+    # connect to the MerkleValidator contract
     contract = w3.eth.contract(address=address, abi=abi)
 
+    # Try to call a simple view function
+    # Replace 'someFunction' with an actual function name from your MerkleValidator contract
     try:
-        result = contract.functions.someViewFunction().call()
-        print(f"Successfully called contract function. Result: {result}")
+        # Example: result = contract.functions.isValidProof(...).call()
+        # You need to replace this with a real function call from your contract
+        print("Available functions:", [func for func in contract.functions])
+        # result = contract.functions.someFunction().call()
+        # print(f"Successfully called contract function. Result: {result}")
     except Exception as e:
         print(f"Error calling contract function: {str(e)}")
-	
+
     return w3, contract
 
+# Test the function
+w3, contract = connect_with_middleware('path/to/your/contract_info.json')
+if w3 and contract:
+    print("Successfully connected and created contract instance")
+else:
+    print("Failed to connect or create contract instance")
+	
 if __name__ == "__main__":
 	connect_to_eth()
