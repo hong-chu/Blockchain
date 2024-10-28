@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Oct 28 15:25:34 2024
+
+@author: hongchu
+"""
+
 # -*- coding: utf-8 -*-
 
 import random
@@ -63,32 +71,27 @@ def is_ordered_block(w3, block_num):
 
     # Retrieve base fee if present (post-EIP-1559)
     base_fee = block.get('baseFeePerGas', None)
-    
-    # Initialize previous priority fee for ordering comparison
-    previous_priority_fee = None
-    ordered = True  # Assume ordered initially
+    ordered = True  # Default to True, will set to False if we find any out-of-order transactions
 
-    # Check each transaction in the block
+    previous_priority_fee = None
+
     for tx in block.transactions:
-        # Calculate priority fee based on transaction type and base fee presence
+        # Determine priority fee based on transaction type
         if tx.type == "0x2" and base_fee is not None:  # Type 2 transaction with base fee
             priority_fee = min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - base_fee)
-        else:  # Type 0 transaction or pre-EIP-1559 block
+        else:  # Type 0 transaction or pre-EIP-1559
             priority_fee = tx.gasPrice - base_fee if base_fee else tx.gasPrice
 
-        # Check for decreasing priority fee order
+        # Check if transactions are in decreasing order by priority fee
         if previous_priority_fee is not None and priority_fee > previous_priority_fee:
-            ordered = False  # Transactions are not ordered
-            break  # Exit the loop early if unordered
+            ordered = False  # Found unordered transaction, set flag to False
+            break  # No need to continue if we've found an unordered transaction
 
-        # Update previous priority fee for the next comparison
         previous_priority_fee = priority_fee
-
-    return ordered
 
 
 def get_contract_values(contract, admin_address, owner_address):
-	"""
+    """
 	Takes a contract object, and two addresses (as strings) to be used for calling
 	the contract to check current on chain values.
 	The provided "default_admin_role" is the correctly formatted solidity default
@@ -101,19 +104,15 @@ def get_contract_values(contract, admin_address, owner_address):
 	check on available contract functions and transactions on the block explorer at
 	https://testnet.bscscan.com/address/0xaA7CAaDA823300D18D3c43f65569a47e78220073
 	"""
-	default_admin_role = int.to_bytes(0, 32, byteorder="big")
+    default_admin_role = int.to_bytes(0, 32, byteorder="big")
 
-	# TODO complete the following lines by performing contract calls
-    # Get the onchain merkleRoot from the contract
-	onchain_root = contract.functions.merkleRoot().call()
-    
-    # Check if admin_address has the default_admin_role
-	has_role = contract.functions.hasRole(default_admin_role, admin_address).call()
-    
-    # Get the prime owned by owner_address
-	prime = contract.functions.getPrime(owner_address).call()
+    # TODO complete the following lines by performing contract calls
+    # Call contract functions
+    onchain_root = contract.functions.merkleRoot().call()
+    has_role = contract.functions.hasRole(default_admin_role, admin_address).call()
+    prime = contract.functions.getPrimeByOwner(owner_address).call()
 
-	return onchain_root, has_role, prime
+    return onchain_root, has_role, prime
 
 
 
