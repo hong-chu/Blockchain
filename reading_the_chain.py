@@ -70,7 +70,7 @@ def is_ordered_block(w3, block_num):
     ordered = False
     priority_fee = 0
 
-    print(block[0])
+    print(block)
     # for tx in block.transactions:
     #     if tx['type'] == 0:
     #         if tx['gasPrice'] < block['baseFeePerGas']:
