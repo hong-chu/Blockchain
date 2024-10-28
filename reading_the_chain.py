@@ -70,18 +70,19 @@ def is_ordered_block(w3, block_num):
     ordered = False
     priority_fee = 0
 
-    for tx in block.transactions:
-        if tx['type'] == 0:
-            if tx['gasPrice'] < block['baseFeePerGas']:
-                return ordered
-            priority_fee = tx['gasPrice'] - block['baseFeePerGas']
-            ordered = True
-        elif tx['type'] == 2:
-            if tx['gasPrice'] < min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - block['baseFeePerGas']):
-                return ordered
-            priority_fee = min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - block['baseFeePerGas'])
-            ordered = True
-    return ordered
+    print(block.transactions[0])
+    # for tx in block.transactions:
+    #     if tx['type'] == 0:
+    #         if tx['gasPrice'] < block['baseFeePerGas']:
+    #             return ordered
+    #         priority_fee = tx['gasPrice'] - block['baseFeePerGas']
+    #         ordered = True
+    #     elif tx['type'] == 2:
+    #         if tx['gasPrice'] < min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - block['baseFeePerGas']):
+    #             return ordered
+    #         priority_fee = min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - block['baseFeePerGas'])
+    #         ordered = True
+    # return ordered
 
 
 def get_contract_values(contract, admin_address, owner_address):
