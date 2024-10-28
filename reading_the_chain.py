@@ -66,11 +66,10 @@ def is_ordered_block(w3, block_num):
 
 	Conveniently, most type 2 transactions set the gasPrice field to be min( tx.maxPriorityFeePerGas + block.baseFeePerGas, tx.maxFeePerGas )
 	"""
-    block = w3.eth.get_block(block_num)
-    ordered = False
-    priority_fee = 0
+    # block = w3.eth.get_block(block_num)
+    # ordered = False
+    # priority_fee = 0
 
-    print(block)
     # for tx in block.transactions:
     #     if tx['type'] == 0:
     #         if tx['gasPrice'] < block['baseFeePerGas']:
@@ -83,6 +82,37 @@ def is_ordered_block(w3, block_num):
     #         priority_fee = min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - block['baseFeePerGas'])
     #         ordered = True
     # return ordered
+    block = w3.eth.get_block(block_num, full_transactions=True)
+    ordered = True  # Start with the assumption that the block is ordered
+    
+    # Fetch base fee per gas if available (only present in EIP-1559 blocks)
+    base_fee = block.get('baseFeePerGas', None)
+
+    # Initialize variable to store the priority fee of the previous transaction
+    previous_priority_fee = None
+
+    # Iterate over all transactions in the block
+    for tx in block.transactions:
+        # Determine priority fee based on transaction type
+        if 'maxPriorityFeePerGas' in tx and 'maxFeePerGas' in tx and base_fee is not None:
+            # Type 2 transaction with EIP-1559
+            priority_fee = min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - base_fee)
+        elif base_fee is not None:
+            # Type 0 transaction in a post-EIP-1559 block with base fee
+            priority_fee = tx.gasPrice - base_fee
+        else:
+            # Pre-EIP-1559 or Type 0 transaction without base fee
+            priority_fee = tx.gasPrice
+
+        # Check if the transactions are in decreasing order by priority fee
+        if previous_priority_fee is not None and priority_fee > previous_priority_fee:
+            ordered = False  # Found unordered transaction
+            break  # No need to continue if we find an unordered transaction
+
+        # Update the previous priority fee for the next comparison
+        previous_priority_fee = priority_fee
+
+    return ordered
 
 
 def get_contract_values(contract, admin_address, owner_address):
