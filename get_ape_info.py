@@ -21,7 +21,7 @@ with open('/home/codio/workspace/abi.json', 'r') as f:
     abi = json.load(f)
 
 # Connect to an Ethereum node (Infura or Alchemy URL)
-api_url = "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID"  # Replace with your Ethereum node URL
+api_url = "https://mainnet.infura.io/v3/784304505f3148789fea389712f68321"  # Replace with your Ethereum node URL
 provider = HTTPProvider(api_url)
 web3 = Web3(provider)
 assert web3.is_connected(), "Failed to connect to Ethereum node"
