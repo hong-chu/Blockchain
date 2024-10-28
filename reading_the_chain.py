@@ -68,26 +68,20 @@ def is_ordered_block(w3, block_num):
 	"""
     block = w3.eth.get_block(block_num)
     ordered = False
-
-    # Retrieve base fee if present (post-EIP-1559)
-    base_fee = block.get('baseFeePerGas', None)
-    ordered = True  # Default to True, will set to False if we find any out-of-order transactions
-
-    previous_priority_fee = None
+    priority_fee = 0
 
     for tx in block.transactions:
-        # Determine priority fee based on transaction type
-        if tx.type == "0x2" and base_fee is not None:  # Type 2 transaction with base fee
-            priority_fee = min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - base_fee)
-        else:  # Type 0 transaction or pre-EIP-1559
-            priority_fee = tx.gasPrice - base_fee if base_fee else tx.gasPrice
-
-        # Check if transactions are in decreasing order by priority fee
-        if previous_priority_fee is not None and priority_fee > previous_priority_fee:
-            ordered = False  # Found unordered transaction, set flag to False
-            break  # No need to continue if we've found an unordered transaction
-
-        previous_priority_fee = priority_fee
+        if tx['type'] == 0:
+            if tx['gasPrice'] < block['baseFeePerGas']:
+                return ordered
+            priority_fee = tx['gasPrice'] - block['baseFeePerGas']
+            ordered = True
+        elif tx['type'] == 2:
+            if tx['gasPrice'] < min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - block['baseFeePerGas']):
+                return ordered
+            priority_fee = min(tx['maxPriorityFeePerGas'], tx['maxFeePerGas'] - block['baseFeePerGas'])
+            ordered = True
+    return ordered
 
 
 def get_contract_values(contract, admin_address, owner_address):
