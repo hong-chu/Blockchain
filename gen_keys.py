@@ -14,44 +14,50 @@ from eth_account.messages import encode_defunct
 
 def get_keys(challenge, keyId=0, filename="eth_mnemonic.txt"):
     """
-    Generate a stable private key
-    challenge - byte string
-    keyId (integer) - which key to use
+    Generate a stable private key.
+    
+    Parameters:
+    challenge - byte string, the message to sign
+    keyId - integer, specifies which key to use
     filename - filename to read and store mnemonics
 
-    Each mnemonic is stored on a separate line
-    If fewer than (keyId+1) mnemonics have been generated,
-    generate a new one and return that
+    Each mnemonic is stored on a separate line.
+    If fewer than (keyId+1) mnemonics have been generated, generate a new one and return that.
     """
-    # Try to read existing mnemonics
-    mnemonics = []
-    try:
-        with open(filename, 'r') as f:
-            mnemonics = f.read().splitlines()
-    except FileNotFoundError:
-        pass
 
-    # Generate new mnemonic if needed
+    # Initialize Web3
+    w3 = Web3()
+
+    # Ensure the file exists and read or generate mnemonics
+    if not os.path.exists(filename):
+        open(filename, 'w').close()
+
+    with open(filename, 'r') as f:
+        mnemonics = f.readlines()
+
+    # Generate a new mnemonic if needed
     if keyId >= len(mnemonics):
-        w3 = Web3()
-        msg = eth_account.messages.encode_defunct(challenge)
-        sig = eth_account.Account.sign_message(msg)
-        eth_addr = sig.account_address
-
-        # Store the new mnemonic
+        new_account = Account.create()
+        mnemonic = new_account.key.hex()
         with open(filename, 'a') as f:
-            f.write(f"{sig.signature.hex()}\n")
-        
-        return sig, eth_addr
+            f.write(mnemonic + '\n')
+        account = Account.from_key(mnemonic)
     else:
-        # Use existing mnemonic
-        stored_sig = bytes.fromhex(mnemonics[keyId])
-        w3 = Web3()
-        msg = eth_account.messages.encode_defunct(challenge)
-        # Recreate signature and address from stored signature
-        eth_addr = eth_account.Account.recover_message(msg,
-                                                       signature=stored_sig)
-        return stored_sig, eth_addr
+        # Retrieve existing mnemonic
+        mnemonic = mnemonics[keyId].strip()
+        account = Account.from_key(mnemonic)
+
+    # Generate an Ethereum address
+    eth_addr = account.address
+
+    # Sign the challenge
+    msg = encode_defunct(challenge)
+    sig = account.sign_message(msg)
+
+    assert eth_account.Account.recover_message(msg,signature=sig.signature.hex()) == eth_addr, f"Failed to sign message properly"
+
+    # Return the signature and Ethereum address
+    return sig, eth_addr
 
 # Test function
 if __name__ == "__main__":
