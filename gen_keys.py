@@ -24,37 +24,22 @@ def get_keys(challenge, keyId=0, filename="eth_mnemonic.txt"):
     """
     w3 = Web3()
 
-    # Ensure the file exists and read or generate mnemonics
-    if not os.path.exists(filename):
-        open(filename, 'w').close()
 
-    with open(filename, 'r') as f:
-        mnemonics = f.readlines()
-
-    # Generate a new mnemonic if needed
-    if keyId >= len(mnemonics):
-        # Create a new account and get its private key (as hex string)
-        new_account = Account.create()
-        mnemonic = new_account.key.hex()  # Use the private key as a mnemonic in this example
-        with open(filename, 'a') as f:
-            f.write(mnemonic + '\n')
-        account = Account.from_key(mnemonic)
-    else:
-        # Retrieve existing mnemonic
-        mnemonic = mnemonics[keyId].strip()
-        account = Account.from_key(mnemonic)
+    # Create a new account and get its private key (as hex string)
+    new_account = Account.create()
+    mnemonic = new_account.key.hex()  # Use the private key as a mnemonic in this example
+    with open(filename, 'a') as f:
+        f.write(mnemonic + '\n')
+    
+    msg = encode_defunct(challenge)
+    sig = w3.eth.account.sign_message(msg, private_key=new_account.key)
+    w3.eth.account.recover_message(msg, signature=sig.signature)
 
     # Generate an Ethereum address
-    eth_addr = account.address
-
-    # Encode the challenge message
-    msg = encode_defunct(challenge)
-
-    # Sign the challenge message
-    sig = account.sign_message(msg)
+    eth_addr = new_account.address
 
     # Verify the signature by recovering the address
-    assert eth_account.Account.recover_message(msg, signature=sig.signature) == eth_addr, "Failed to sign message properly"
+    assert eth_account.Account.recover_message(msg, signature=sig.signature.hex()) == eth_addr, f"Failed to sign message properly"
 
     # Return the signature and Ethereum address
     return sig, eth_addr
