@@ -29,7 +29,7 @@ def get_keys(challenge, keyId=0, filename="eth_mnemonic.txt"):
         open(filename, 'w').close()
         
     with open(filename, 'r') as f:
-        private_key = f.readlines()
+        private_key = f.readlines()[0]
         if len(private_key) < keyId + 1:
             # Create a new account and get its private key (as hex string)
             new_account = Account.create()
