@@ -24,13 +24,22 @@ def get_keys(challenge, keyId=0, filename="eth_mnemonic.txt"):
     """
     w3 = Web3()
 
-
-    # Create a new account and get its private key (as hex string)
-    new_account = Account.create()
-    mnemonic = new_account.key.hex()  # Use the private key as a mnemonic in this example
-    with open(filename, 'a') as f:
-        f.write(mnemonic + '\n')
+    # Ensure the file exists and read or generate mnemonics
+    if not os.path.exists(filename):
+        open(filename, 'w').close()
+        
+    with open(filename, 'r') as f:
+        private_key = f.readlines()
+        if len(private_key) < keyId + 1:
+            # Create a new account and get its private key (as hex string)
+            new_account = Account.create()
+            private_key = new_account.key.hex()  # Use the private key as a mnemonic in this example
+            with open(filename, 'a') as f:
+                f.write(private_key + '\n')
+        else:
+            new_account = Account.from_key(private_key)
     
+
     msg = encode_defunct(challenge)
     sig = w3.eth.account.sign_message(msg, private_key=new_account.key)
     w3.eth.account.recover_message(msg, signature=sig.signature)
