@@ -28,7 +28,7 @@ def sign(m):
 
     # Generate the signature
     signed_message = account.sign_message(message)
-
+    eth_address = account.address
     assert isinstance(signed_message, eth_account.datastructures.SignedMessage)
 
     return eth_address, signed_message
