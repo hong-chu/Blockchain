@@ -23,7 +23,7 @@ def sign(m):
     # generate signature
     # your code here
 
-    signed_message = encode_defunct(m)
+    signed_message = encode_defunct(repr(m))
 
     assert isinstance(signed_message, eth_account.datastructures.SignedMessage)
 
