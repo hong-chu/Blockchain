@@ -36,7 +36,6 @@ contract Destination is AccessControl {
 
       emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
   }
-
 	function unwrap(address _wrapped_token, address _recipient, uint256 _amount ) public {
 		//YOUR CODE HERE
     require(_amount > 0, "Amount must be greater than zero");
@@ -44,35 +43,33 @@ contract Destination is AccessControl {
 
     address underlying_token = wrapped_tokens[_wrapped_token];
 
-    // Burn the wrapped tokens from the caller
+    // Burn the wrapped tokens from the sender
     BridgeToken(_wrapped_token).burnFrom(msg.sender, _amount);
 
     // Transfer the underlying tokens to the recipient
     require(ERC20(underlying_token).transfer(_recipient, _amount), "Token transfer failed");
 
     emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
-	}
+
+  }
 
 	function createToken(address _underlying_token, string memory name, string memory symbol ) public onlyRole(CREATOR_ROLE) returns(address) {
 		//YOUR CODE HERE
     require(_underlying_token != address(0), "Invalid underlying token address");
     require(underlying_tokens[_underlying_token] == address(0), "Token already exists");
 
-    // Deploy the new BridgeToken
-    BridgeToken wrapped_token = new BridgeToken(name, symbol);
+    // Deploy a new BridgeToken
+    BridgeToken wrapped_token = new BridgeToken(_underlying_token, name, symbol, address(this));
 
     // Map the underlying token to the wrapped token
     underlying_tokens[_underlying_token] = address(wrapped_token);
     wrapped_tokens[address(wrapped_token)] = _underlying_token;
     tokens.push(_underlying_token);
 
-    // Grant WARDEN_ROLE to this contract for minting and burning
-    wrapped_token.grantRole(wrapped_token.MINTER_ROLE(), address(this));
-
     emit Creation(_underlying_token, address(wrapped_token));
 
     return address(wrapped_token);
-    
+
 	}
 
 }
