@@ -70,7 +70,7 @@ contract Destination is AccessControl {
     /**
      * @dev Unwraps the specified amount of a wrapped token, burning it and preparing to return the underlying token.
      */
-    function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public {
+    function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public onlyRole(WARDEN_ROLE) {
         require(_wrapped_token != address(0), "Invalid wrapped token address");
         require(_recipient != address(0), "Recipient address cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
@@ -82,7 +82,7 @@ contract Destination is AccessControl {
         // Burn the wrapped tokens from the sender
         BridgeToken(_wrapped_token).burnFrom(msg.sender, _amount);
 
-        emit Unwrap(_wrapped_token, underlying_token, _recipient, _amount);
+        emit Unwrap(_wrapped_token, underlying_token, msg.sender, _recipient, _amount);
     }
 
     /**
