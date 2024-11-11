@@ -82,7 +82,7 @@ contract Destination is AccessControl {
         // Burn the wrapped tokens from the sender
         BridgeToken(_wrapped_token).burnFrom(msg.sender, _amount);
 
-        emit Unwrap(_wrapped_token, underlying_token, msg.sender, _recipient, _amount);
+        emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
     }
 
     /**
