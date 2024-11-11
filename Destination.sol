@@ -8,13 +8,11 @@ contract Destination is AccessControl {
     bytes32 public constant WARDEN_ROLE = keccak256("BRIDGE_WARDEN_ROLE");
     bytes32 public constant CREATOR_ROLE = keccak256("CREATOR_ROLE");
 
-    // Maps between underlying tokens and their corresponding wrapped tokens
-    mapping(address => address) public underlying_tokens;
-    mapping(address => address) public wrapped_tokens;
+    mapping(address => address) public underlying_tokens; // Maps underlying tokens to their wrapped counterparts
+    mapping(address => address) public wrapped_tokens;    // Maps wrapped tokens to their underlying counterparts
+    address[] public tokens;                              // Array to track registered tokens
 
-    address[] public tokens; // Tracks registered underlying tokens
-
-    // Events
+    // Events for logging important actions
     event Creation(address indexed underlying_token, address indexed wrapped_token);
     event Wrap(address indexed underlying_token, address indexed wrapped_token, address indexed recipient, uint256 amount);
     event Unwrap(address indexed wrapped_token, address indexed underlying_token, address indexed recipient, uint256 amount);
@@ -27,8 +25,8 @@ contract Destination is AccessControl {
     }
 
     /**
-     * @dev Creates a wrapped token for the given underlying asset.
-     * Only addresses with the CREATOR_ROLE can call this function.
+     * @dev Creates a wrapped token for the specified underlying asset.
+     * Can only be called by addresses with the CREATOR_ROLE.
      */
     function createToken(address _underlying_token, string memory name, string memory symbol)
         public
@@ -41,7 +39,7 @@ contract Destination is AccessControl {
         // Deploy the new BridgeToken
         BridgeToken wrapped_token = new BridgeToken(_underlying_token, name, symbol, msg.sender);
 
-        // Map the underlying token to the new wrapped token
+        // Register the token mappings
         underlying_tokens[_underlying_token] = address(wrapped_token);
         wrapped_tokens[address(wrapped_token)] = _underlying_token;
         tokens.push(_underlying_token);
@@ -51,33 +49,32 @@ contract Destination is AccessControl {
     }
 
     /**
-     * @dev Wraps the specified amount of an underlying token into its corresponding wrapped token.
+     * @dev Wraps the specified amount of an underlying token into its wrapped counterpart.
      * Only addresses with the WARDEN_ROLE can call this function.
      */
     function wrap(address _underlying_token, address _recipient, uint256 _amount) public onlyRole(WARDEN_ROLE) {
         require(_underlying_token != address(0), "Invalid underlying token address");
-        require(_recipient != address(0), "Recipient cannot be zero address");
+        require(_recipient != address(0), "Recipient address cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
         require(underlying_tokens[_underlying_token] != address(0), "Token not registered");
 
         address wrapped_token = underlying_tokens[_underlying_token];
         require(wrapped_token != address(0), "Wrapped token not found");
 
-        // Mint wrapped tokens to the recipient
+        // Mint the wrapped tokens to the recipient
         BridgeToken(wrapped_token).mint(_recipient, _amount);
 
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
 
     /**
-     * @dev Unwraps the specified amount of a wrapped token.
-     * Burns the wrapped tokens and prepares the underlying tokens for release.
+     * @dev Unwraps the specified amount of a wrapped token, burning it and preparing to return the underlying token.
      */
     function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public {
         require(_wrapped_token != address(0), "Invalid wrapped token address");
-        require(_recipient != address(0), "Recipient cannot be zero address");
+        require(_recipient != address(0), "Recipient address cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
-        require(wrapped_tokens[_wrapped_token] != address(0), "Token not registered");
+        require(wrapped_tokens[_wrapped_token] != address(0), "Wrapped token not registered");
 
         address underlying_token = wrapped_tokens[_wrapped_token];
         require(underlying_token != address(0), "Underlying token not found");
@@ -89,7 +86,7 @@ contract Destination is AccessControl {
     }
 
     /**
-     * @dev Returns the list of registered underlying tokens.
+     * @dev Returns the list of registered tokens.
      */
     function getTokens() public view returns (address[] memory) {
         return tokens;
