@@ -135,37 +135,45 @@ def sign_challenge(challenge):
 
     return addr, eth_sig_obj.signature.hex()
 
-
 def send_signed_msg(proof, random_leaf):
     """
-        Takes a Merkle proof of a leaf, and that leaf (in bytes32 format)
-        builds signs and sends a transaction claiming that leaf (prime)
-        on the contract
+    Submits the Merkle proof and claims the prime on the contract.
     """
     chain = 'bsc'
 
+    # Load account and contract information
     acct = get_account()
     address, abi = get_contract_info(chain)
     w3 = connect_to(chain)
-
+    
+    # Create contract instance
     contract = w3.eth.contract(address=address, abi=abi)
 
-    # Prepare the transaction
-    tx = contract.functions.claimPrime(random_leaf, proof).build_transaction({
-        'chainId': w3.eth.chain_id,
-        'gas': 3000000,
-        'gasPrice': w3.eth.gas_price,
-        'nonce': w3.eth.get_transaction_count(acct.address),
+    # Validate inputs
+    assert isinstance(random_leaf, bytes) and len(random_leaf) == 32, "random_leaf must be bytes32"
+    assert all(isinstance(p, bytes) and len(p) == 32 for p in proof), "Proof elements must be bytes32"
+
+    # Estimate gas
+    estimated_gas = contract.functions.submit(proof, random_leaf).estimate_gas({
+        'from': acct.address
     })
 
-    # Sign the transaction
-    signed_tx = w3.eth.account.sign_transaction(tx, private_key=acct.key)
+    # Build transaction
+    tx = contract.functions.submit(proof, random_leaf).build_transaction({
+        'chainId': w3.eth.chain_id,
+        'from': acct.address,
+        'nonce': w3.eth.get_transaction_count(acct.address),
+        'gas': estimated_gas,
+        'gasPrice': w3.eth.gas_price
+    })
 
-    # Send the transaction
+    # Sign and send transaction
+    signed_tx = w3.eth.account.sign_transaction(tx, private_key=acct.key)
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
-    return tx_hash
+    print(f"Transaction sent with hash: {tx_hash.hex()}")
 
+    return tx_hash
 
 # Helper functions that do not need to be modified
 def connect_to(chain):
