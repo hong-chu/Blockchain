@@ -9,36 +9,45 @@ from web3.middleware import geth_poa_middleware  # Necessary for POA chains
 
 def merkle_assignment():
     """
-        The only modifications you need to make to this method are to assign
-        your "random_leaf_index" and uncomment the last line when you are
-        ready to attempt to claim a prime. You will need to complete the
-        methods called by this method to generate the proof.
+    Generates primes, builds a Merkle tree, signs a challenge, and optionally claims a prime.
     """
     # Generate the list of primes as integers
     num_of_primes = 8192
     primes = generate_primes(num_of_primes)
 
-    # Create a version of the list of primes in bytes32 format
+    # Convert primes to bytes32 format
     leaves = convert_leaves(primes)
 
-    # Build a Merkle tree using the bytes32 leaves as the Merkle tree's leaves
+    # Build the Merkle tree
     tree = build_merkle(leaves)
 
-    # Select a random leaf and create a proof for that leaf
-    random_leaf_index = random.randint(1, len(leaves) - 1) #TODO generate a random index from primes to claim (0 is already claimed)
-    proof = prove_merkle(tree, random_leaf_index)
+    # Select a random leaf to claim
+    random_leaf_index = random.randint(1, len(leaves) - 1)
+    print(f"Random Leaf Index: {random_leaf_index}")
 
-    # This is the same way the grader generates a challenge for sign_challenge()
-    challenge = ''.join(random.choice(string.ascii_letters) for i in range(32))
-    # Sign the challenge to prove to the grader you hold the account
+    # Generate proof for the selected leaf
+    proof = prove_merkle(tree, random_leaf_index)
+    print(f"Merkle Proof: {[p.hex() for p in proof]}")
+
+    # Generate and sign a challenge
+    challenge = ''.join(random.choice(string.ascii_letters) for _ in range(32))
+    print(f"Challenge: {challenge}")
+
     addr, sig = sign_challenge(challenge)
 
-    if sign_challenge_verify(challenge, addr, sig):
-        tx_hash = '0x'
-        # TODO, when you are ready to attempt to claim a prime (and pay gas fees),
-        #  complete this method and run your code with the following line un-commented
+    # Verify the signature before submitting
+    if not sign_challenge_verify(challenge, addr, sig):
+        print("Signature verification failed.")
+        return None
+
+    # Submit the Merkle proof and claim the prime
+    try:
         tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
-    return tx_hash
+        print(f"Transaction sent successfully! Hash: {tx_hash}")
+        return tx_hash
+    except Exception as e:
+        print(f"Error submitting transaction: {e}")
+        return None
 
 def generate_primes(num_primes):
     """
