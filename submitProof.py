@@ -72,7 +72,9 @@ def convert_leaves(primes_list):
         Converts the leaves (primes_list) to bytes32 format
         returns list of primes where list entries are bytes32 encodings of primes_list entries
     """
-    return [int.to_bytes(prime, 32, 'big') for prime in primes_list]
+    # return [int.to_bytes(prime, 32, 'big') for prime in primes_list]
+    return [prime.to_bytes(32, byteorder='big') for prime in primes_list]
+
 
 
 def build_merkle(leaves):
@@ -86,15 +88,11 @@ def build_merkle(leaves):
     tree = [leaves]  # Initialize tree with the leaves
 
     while len(tree[-1]) > 1:
-        layer = []
-        current_layer = tree[-1]
-
-        for i in range(0, len(current_layer), 2):
-            a = current_layer[i]
-            b = current_layer[i + 1] if i + 1 < len(current_layer) else a  # Handle odd number of leaves
-            layer.append(hash_pair(a, b))
-        tree.append(layer)
-
+        new_layer = []
+        for i in range(0, len(tree[-1]), 2):
+            new_layer.append(hash_pair(tree[-1][i], tree[-1][i+1]))
+        tree.append(new_layer)
+    
     return tree
 
 
@@ -130,11 +128,11 @@ def sign_challenge(challenge):
     addr = acct.address
     eth_sk = acct.key
 
-    eth_encoded_msg = eth_account.messages.encode_defunct(text=challenge)
-    eth_sig_obj = acct.sign_message(eth_encoded_msg)
+    eth_sig_obj = acct.sign_message(eth_account.messages.encode_defunct(text=challenge))
 
     return addr, eth_sig_obj.signature.hex()
 
+    
 def send_signed_msg(proof, random_leaf):
     """
     Submits the Merkle proof and claims the prime on the contract.
@@ -145,7 +143,7 @@ def send_signed_msg(proof, random_leaf):
     acct = get_account()
     address, abi = get_contract_info(chain)
     w3 = connect_to(chain)
-    
+
     # Create contract instance
     contract = w3.eth.contract(address=address, abi=abi)
 
@@ -153,10 +151,18 @@ def send_signed_msg(proof, random_leaf):
     assert isinstance(random_leaf, bytes) and len(random_leaf) == 32, "random_leaf must be bytes32"
     assert all(isinstance(p, bytes) and len(p) == 32 for p in proof), "Proof elements must be bytes32"
 
+    # Debugging prints
+    print(f"Submitting Merkle Proof: {[p.hex() for p in proof]}")
+    print(f"Submitting Leaf: {random_leaf.hex()}")
+
     # Estimate gas
-    estimated_gas = contract.functions.submit(proof, random_leaf).estimate_gas({
-        'from': acct.address
-    })
+    try:
+        estimated_gas = contract.functions.submit(proof, random_leaf).estimate_gas({
+            'from': acct.address
+        })
+    except Exception as e:
+        print(f"Error estimating gas: {e}")
+        return None
 
     # Build transaction
     tx = contract.functions.submit(proof, random_leaf).build_transaction({
@@ -172,8 +178,9 @@ def send_signed_msg(proof, random_leaf):
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 
     print(f"Transaction sent with hash: {tx_hash.hex()}")
-
     return tx_hash
+
+
 
 # Helper functions that do not need to be modified
 def connect_to(chain):
