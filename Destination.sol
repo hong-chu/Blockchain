@@ -19,7 +19,7 @@ contract Destination is AccessControl {
 
     event Creation(address indexed underlying_token, address indexed wrapped_token);
     event Wrap(address indexed underlying_token, address indexed wrapped_token, address indexed to, uint256 amount);
-    event Unwrap(address indexed underlying_token, address indexed wrapped_token, address frm, address indexed to, uint256 amount);
+    event Unwrap(address indexed underlying_token, address indexed wrapped_token, address indexed frm, address to, uint256 amount);
 
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
@@ -70,11 +70,11 @@ contract Destination is AccessControl {
     ) public {
         require(wrapped_tokens[_wrapped_token] != address(0), "Wrapped token does not exist");
 
-        // Burn the wrapped tokens from the sender's balance
         BridgeToken token = BridgeToken(_wrapped_token);
 
-        // Since the Destination contract has MINTER_ROLE, it can burn tokens from any account without allowance
-        token.burnFrom(msg.sender, _amount);
+        // Burn the wrapped tokens from the sender's balance
+        // Use `burn` instead of `burnFrom` to allow users to burn their own tokens without allowance
+        token.burn(_amount);
 
         address underlying_token = wrapped_tokens[_wrapped_token];
 
