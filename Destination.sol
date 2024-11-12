@@ -14,7 +14,7 @@ contract Destination is AccessControl {
     // Mapping from wrapped token address (destination chain) to underlying token address (source chain)
     mapping(address => address) public wrapped_tokens;
 
-    // List of wrapped tokens
+    // List of all wrapped token addresses
     address[] public tokens;
 
     event Creation(address indexed underlying_token, address indexed wrapped_token);
@@ -25,6 +25,24 @@ contract Destination is AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
         _setupRole(CREATOR_ROLE, admin);
         _setupRole(WARDEN_ROLE, admin);
+    }
+
+    function createToken(address _underlying_token, string memory name, string memory symbol) public onlyRole(CREATOR_ROLE) returns (address) {
+        require(underlying_tokens[_underlying_token] == address(0), "Token already exists");
+
+        // Deploy a new BridgeToken contract with Destination contract as admin
+        BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
+
+        // Map the underlying token to the new wrapped token
+        underlying_tokens[_underlying_token] = address(newToken);
+        wrapped_tokens[address(newToken)] = _underlying_token;
+
+        // Add the new token to the tokens list
+        tokens.push(address(newToken));
+
+        emit Creation(_underlying_token, address(newToken));
+
+        return address(newToken);
     }
 
     function wrap(address _underlying_token, address _recipient, uint256 _amount) public onlyRole(WARDEN_ROLE) {
@@ -42,29 +60,12 @@ contract Destination is AccessControl {
 
         BridgeToken token = BridgeToken(_wrapped_token);
 
-        // The Destination contract burns tokens from msg.sender's balance
+        // Burn the wrapped tokens from the sender's balance
+        // Since the Destination contract has MINTER_ROLE, it can burn without allowance
         token.burnFrom(msg.sender, _amount);
 
         address underlying_token = wrapped_tokens[_wrapped_token];
 
         emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
-    }
-
-    function createToken(address _underlying_token, string memory name, string memory symbol) public onlyRole(CREATOR_ROLE) returns (address) {
-        require(underlying_tokens[_underlying_token] == address(0), "Token already exists");
-
-        // Deploy a new BridgeToken contract with Destination contract as admin
-        BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
-
-        // Map the underlying token to the new wrapped token
-        underlying_tokens[_underlying_token] = address(newToken);
-        wrapped_tokens[address(newToken)] = _underlying_token;
-
-        // Update the tokens list
-        tokens.push(address(newToken));
-
-        emit Creation(_underlying_token, address(newToken));
-
-        return address(newToken);
     }
 }
