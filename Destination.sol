@@ -8,18 +8,18 @@ contract Destination is AccessControl {
     bytes32 public constant WARDEN_ROLE = keccak256("BRIDGE_WARDEN_ROLE");
     bytes32 public constant CREATOR_ROLE = keccak256("CREATOR_ROLE");
 
-    // Mapping from underlying token address (source chain) to wrapped token address (destination chain)
+    // Mapping from underlying token address to wrapped token address
     mapping(address => address) public wrapped_tokens;
 
-    // Mapping from wrapped token address (destination chain) to underlying token address (source chain)
+    // Mapping from wrapped token address to underlying token address
     mapping(address => address) public underlying_tokens;
 
     // List of all wrapped token addresses
     address[] public tokens;
 
-    event Creation(address indexed underlying_token, address indexed wrapped_token);
-    event Wrap(address indexed underlying_token, address indexed wrapped_token, address indexed to, uint256 amount);
-    event Unwrap(address indexed underlying_token, address indexed wrapped_token, address indexed from, address to, uint256 amount);
+    event Creation(address indexed underlying_token, address wrapped_token);
+    event Wrap(address indexed underlying_token, address wrapped_token, address to, uint256 amount);
+    event Unwrap(address indexed underlying_token, address wrapped_token, address from, address to, uint256 amount);
 
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
@@ -34,9 +34,6 @@ contract Destination is AccessControl {
     ) public onlyRole(CREATOR_ROLE) returns (address) {
         require(wrapped_tokens[_underlying_token] == address(0), "Token already exists");
 
-        // Emit the Creation event with wrapped_token as address(0) to match the test expectation
-        emit Creation(_underlying_token, address(0));
-
         // Deploy a new BridgeToken contract with Destination contract as admin
         BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
 
@@ -46,6 +43,9 @@ contract Destination is AccessControl {
 
         // Add the new token to the tokens list
         tokens.push(address(newToken));
+
+        // Emit the Creation event after the token is created
+        emit Creation(_underlying_token, address(newToken));
 
         return address(newToken);
     }
@@ -61,6 +61,7 @@ contract Destination is AccessControl {
         // Mint the wrapped tokens to the recipient
         BridgeToken(wrapped_token).mint(_recipient, _amount);
 
+        // Emit the Wrap event
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
 
@@ -74,11 +75,12 @@ contract Destination is AccessControl {
         // Burn the wrapped tokens from the sender's balance
         BridgeToken token = BridgeToken(_wrapped_token);
 
-        // Use `burn` to allow users to burn their own tokens
+        // Allow the user to burn their own tokens
         token.burn(_amount);
 
         address underlying_token = underlying_tokens[_wrapped_token];
 
+        // Emit the Unwrap event
         emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
     }
 }
