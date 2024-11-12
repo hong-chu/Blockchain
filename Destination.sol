@@ -25,7 +25,7 @@ contract Destination is AccessControl {
     }
 
     /**
-     * @dev Creates a wrapped token for a specified underlying asset.
+     * @dev Creates a wrapped token for the specified underlying asset.
      * Can only be called by addresses with the CREATOR_ROLE.
      */
     function createToken(address _underlying_token, string memory name, string memory symbol)
