@@ -27,7 +27,11 @@ contract Destination is AccessControl {
         _setupRole(WARDEN_ROLE, admin);
     }
 
-    function createToken(address _underlying_token, string memory name, string memory symbol) public onlyRole(CREATOR_ROLE) returns (address) {
+    function createToken(
+        address _underlying_token,
+        string memory name,
+        string memory symbol
+    ) public onlyRole(CREATOR_ROLE) returns (address) {
         require(underlying_tokens[_underlying_token] == address(0), "Token already exists");
 
         // Deploy a new BridgeToken contract with Destination contract as admin
@@ -45,7 +49,11 @@ contract Destination is AccessControl {
         return address(newToken);
     }
 
-    function wrap(address _underlying_token, address _recipient, uint256 _amount) public onlyRole(WARDEN_ROLE) {
+    function wrap(
+        address _underlying_token,
+        address _recipient,
+        uint256 _amount
+    ) public onlyRole(WARDEN_ROLE) {
         address wrapped_token = underlying_tokens[_underlying_token];
         require(wrapped_token != address(0), "Wrapped token does not exist");
 
@@ -55,13 +63,17 @@ contract Destination is AccessControl {
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
 
-    function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public {
+    function unwrap(
+        address _wrapped_token,
+        address _recipient,
+        uint256 _amount
+    ) public {
         require(wrapped_tokens[_wrapped_token] != address(0), "Wrapped token does not exist");
 
+        // Burn the wrapped tokens from the sender's balance
         BridgeToken token = BridgeToken(_wrapped_token);
 
-        // Burn the wrapped tokens from the sender's balance
-        // Since the Destination contract has MINTER_ROLE, it can burn without allowance
+        // Since the Destination contract has MINTER_ROLE, it can burn tokens from any account without allowance
         token.burnFrom(msg.sender, _amount);
 
         address underlying_token = wrapped_tokens[_wrapped_token];
