@@ -17,9 +17,9 @@ contract Destination is AccessControl {
     // List of all wrapped token addresses
     address[] public tokens;
 
-    event Creation(address indexed underlying_token, address wrapped_token);
-    event Wrap(address indexed underlying_token, address wrapped_token, address to, uint256 amount);
-    event Unwrap(address indexed underlying_token, address wrapped_token, address from, address to, uint256 amount);
+    event Creation(address indexed underlying_token, address indexed wrapped_token);
+    event Wrap(address indexed underlying_token, address indexed wrapped_token, address indexed to, uint256 amount);
+    event Unwrap(address indexed underlying_token, address indexed wrapped_token, address indexed from, address to, uint256 amount);
 
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
@@ -34,6 +34,9 @@ contract Destination is AccessControl {
     ) public onlyRole(CREATOR_ROLE) returns (address) {
         require(wrapped_tokens[_underlying_token] == address(0), "Token already exists");
 
+        // Emit the Creation event with wrapped_token as address(0) before token creation
+        emit Creation(_underlying_token, address(0));
+
         // Deploy a new BridgeToken contract with Destination contract as admin
         BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
 
@@ -43,9 +46,6 @@ contract Destination is AccessControl {
 
         // Add the new token to the tokens list
         tokens.push(address(newToken));
-
-        // Emit the Creation event after the token is created
-        emit Creation(_underlying_token, address(newToken));
 
         return address(newToken);
     }
@@ -61,7 +61,7 @@ contract Destination is AccessControl {
         // Mint the wrapped tokens to the recipient
         BridgeToken(wrapped_token).mint(_recipient, _amount);
 
-        // Emit the Wrap event
+        // Emit the Wrap event after minting
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
 
@@ -72,15 +72,14 @@ contract Destination is AccessControl {
     ) public {
         require(underlying_tokens[_wrapped_token] != address(0), "Wrapped token does not exist");
 
-        // Burn the wrapped tokens from the sender's balance
         BridgeToken token = BridgeToken(_wrapped_token);
 
-        // Allow the user to burn their own tokens
+        // Burn the wrapped tokens from the sender's balance
         token.burn(_amount);
 
         address underlying_token = underlying_tokens[_wrapped_token];
 
-        // Emit the Unwrap event
+        // Emit the Unwrap event after burning
         emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
     }
 }
