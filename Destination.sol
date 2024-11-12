@@ -26,33 +26,30 @@ contract Destination is AccessControl {
         _setupRole(CREATOR_ROLE, admin);
         _setupRole(WARDEN_ROLE, admin);
     }
-        
+            
     function createToken(
         address _underlying_token,
         string memory name,
         string memory symbol
     ) public onlyRole(CREATOR_ROLE) returns (address) {
-        require(_underlying_token != address(0), "Invalid underlying token");
+        require(_underlying_token != address(0), "Underlying token address cannot be zero");
         require(wrapped_tokens[_underlying_token] == address(0), "Token already exists");
-    
-        // Emit Creation with wrapped_token as address(0)
-        emit Creation(_underlying_token, address(0));
     
         // Deploy a new BridgeToken
         BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
     
-        // Update mappings
-        wrapped_tokens[_underlying_token] = address(newToken);
-        underlying_tokens[address(newToken)] = _underlying_token;
+        // Register the new token
+        address wrapped_token = address(newToken);
+        wrapped_tokens[_underlying_token] = wrapped_token;
+        underlying_tokens[wrapped_token] = _underlying_token;
+        tokens.push(_underlying_token);
     
-        // Add to tokens list
-        tokens.push(address(newToken));
+        // Emit the Creation event
+        emit Creation(_underlying_token, wrapped_token);
     
-        // Emit final Creation event with the actual wrapped_token address
-        emit Creation(_underlying_token, address(newToken));
-    
-        return address(newToken);
+        return wrapped_token;
     }
+
                             
     function wrap(
         address _underlying_token,
