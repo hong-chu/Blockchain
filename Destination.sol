@@ -26,7 +26,7 @@ contract Destination is AccessControl {
         _setupRole(CREATOR_ROLE, admin);
         _setupRole(WARDEN_ROLE, admin);
     }
-    
+        
     function createToken(
         address _underlying_token,
         string memory name,
@@ -34,6 +34,9 @@ contract Destination is AccessControl {
     ) public onlyRole(CREATOR_ROLE) returns (address) {
         require(_underlying_token != address(0), "Invalid underlying token");
         require(wrapped_tokens[_underlying_token] == address(0), "Token already exists");
+    
+        // Emit Creation with wrapped_token as address(0)
+        emit Creation(_underlying_token, address(0));
     
         // Deploy a new BridgeToken
         BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
@@ -43,15 +46,14 @@ contract Destination is AccessControl {
         underlying_tokens[address(newToken)] = _underlying_token;
     
         // Add to tokens list
-        tokens.push(_underlying_token);
+        tokens.push(address(newToken));
     
-        // Emit the Creation event
+        // Emit final Creation event with the actual wrapped_token address
         emit Creation(_underlying_token, address(newToken));
     
         return address(newToken);
     }
-
-                
+                    
     function wrap(
         address _underlying_token,
         address _recipient,
@@ -64,12 +66,14 @@ contract Destination is AccessControl {
         address wrapped_token = wrapped_tokens[_underlying_token];
         require(wrapped_token != address(0), "Wrapped token not found");
     
+        // Mint the wrapped tokens to the recipient
         BridgeToken(wrapped_token).mint(_recipient, _amount);
     
+        // Emit the correct Wrap event
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
 
-
+    
     function unwrap(
         address _wrapped_token,
         address _recipient,
@@ -84,10 +88,10 @@ contract Destination is AccessControl {
     
         BridgeToken token = BridgeToken(_wrapped_token);
     
-        // Ensure the caller owns enough tokens
+        // Ensure the caller has enough tokens to burn
         require(token.balanceOf(msg.sender) >= _amount, "Insufficient balance");
     
-        // Burn the tokens
+        // Burn the tokens from the sender's balance
         token.burnFrom(msg.sender, _amount);
     
         emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
