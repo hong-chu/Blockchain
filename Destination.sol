@@ -33,20 +33,20 @@ contract Destination is AccessControl {
         string memory symbol
     ) public onlyRole(CREATOR_ROLE) returns (address) {
         require(wrapped_tokens[_underlying_token] == address(0), "Token already exists");
-
-        // Emit the Creation event before token creation
+    
+        // Emit the Creation event **before** token creation
         emit Creation(_underlying_token, address(0));
-
+    
         // Deploy a new BridgeToken contract with Destination contract as admin
         BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
-
+    
         // Map the underlying token to the new wrapped token
         wrapped_tokens[_underlying_token] = address(newToken);
         underlying_tokens[address(newToken)] = _underlying_token;
-
+    
         // Add the new token to the tokens list
         tokens.push(address(newToken));
-
+    
         return address(newToken);
     }
 
@@ -57,35 +57,35 @@ contract Destination is AccessControl {
     ) public onlyRole(WARDEN_ROLE) {
         address wrapped_token = wrapped_tokens[_underlying_token];
         require(wrapped_token != address(0), "Wrapped token does not exist");
-
+    
         // Ensure sufficient approval from the sender
         IERC20(_underlying_token).transferFrom(msg.sender, address(this), _amount);
-
+    
         // Mint the wrapped tokens to the recipient
         BridgeToken(wrapped_token).mint(_recipient, _amount);
-
-        // Emit the Wrap event after minting
+    
+        // Emit the Wrap event **after** minting and transferring
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
-
+    
     function unwrap(
         address _wrapped_token,
         address _recipient,
         uint256 _amount
     ) public {
         require(underlying_tokens[_wrapped_token] != address(0), "Wrapped token does not exist");
-
+    
         BridgeToken token = BridgeToken(_wrapped_token);
-
+    
         // Burn the wrapped tokens from the sender's balance
         token.burnFrom(msg.sender, _amount);
-
+    
         address underlying_token = underlying_tokens[_wrapped_token];
-
+    
         // Transfer the underlying tokens to the recipient
         IERC20(underlying_token).transfer(_recipient, _amount);
-
-        // Emit the Unwrap event after burning and transferring
+    
+        // Emit the Unwrap event **after** burning and transferring
         emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
     }
 }
