@@ -39,9 +39,10 @@ contract Destination is AccessControl {
     function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public {
         require(wrapped_tokens[_wrapped_token] != address(0), "Wrapped token does not exist");
 
-        // Burn the wrapped tokens from the sender's account
         BridgeToken token = BridgeToken(_wrapped_token);
-        token.burn(_amount);
+
+        // The Destination contract burns tokens from msg.sender's balance
+        token.burnFrom(msg.sender, _amount);
 
         address underlying_token = wrapped_tokens[_wrapped_token];
 
@@ -51,7 +52,7 @@ contract Destination is AccessControl {
     function createToken(address _underlying_token, string memory name, string memory symbol) public onlyRole(CREATOR_ROLE) returns (address) {
         require(underlying_tokens[_underlying_token] == address(0), "Token already exists");
 
-        // Deploy a new BridgeToken contract
+        // Deploy a new BridgeToken contract with Destination contract as admin
         BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
 
         // Map the underlying token to the new wrapped token
