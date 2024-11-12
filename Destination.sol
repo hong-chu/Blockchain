@@ -35,23 +35,21 @@ contract Destination is AccessControl {
         require(_underlying_token != address(0), "Underlying token address cannot be zero");
         require(wrapped_tokens[_underlying_token] == address(0), "Token already exists");
     
-        // Emit the `Creation` event with `address(0)` for `wrapped_token` before deployment
-        emit Creation(_underlying_token, address(0));
+        // Deploy the new BridgeToken
+        BridgeToken wrapped_token = new BridgeToken(_underlying_token, name, symbol, address(this));
     
-        // Deploy a new BridgeToken contract
-        BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
-    
-        // Register the new token
-        address wrapped_token = address(newToken);
-        wrapped_tokens[_underlying_token] = wrapped_token;
-        underlying_tokens[wrapped_token] = _underlying_token;
+        // Update mappings
+        address wrapped_token_address = address(wrapped_token);
+        wrapped_tokens[_underlying_token] = wrapped_token_address;
+        underlying_tokens[wrapped_token_address] = _underlying_token;
         tokens.push(_underlying_token);
     
-        // Emit the `Creation` event again with the actual wrapped token address
-        emit Creation(_underlying_token, wrapped_token);
+        // Emit the `Creation` event
+        emit Creation(_underlying_token, wrapped_token_address);
     
-        return wrapped_token;
+        return wrapped_token_address;
     }
+
                         
     function wrap(
         address _underlying_token,
