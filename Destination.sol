@@ -58,6 +58,9 @@ contract Destination is AccessControl {
         address wrapped_token = wrapped_tokens[_underlying_token];
         require(wrapped_token != address(0), "Wrapped token does not exist");
 
+        // Ensure sufficient approval from the sender
+        IERC20(_underlying_token).transferFrom(msg.sender, address(this), _amount);
+
         // Mint the wrapped tokens to the recipient
         BridgeToken(wrapped_token).mint(_recipient, _amount);
 
@@ -75,11 +78,14 @@ contract Destination is AccessControl {
         BridgeToken token = BridgeToken(_wrapped_token);
 
         // Burn the wrapped tokens from the sender's balance
-        token.burn(_amount);
+        token.burnFrom(msg.sender, _amount);
 
         address underlying_token = underlying_tokens[_wrapped_token];
 
-        // Emit the Unwrap event after burning
+        // Transfer the underlying tokens to the recipient
+        IERC20(underlying_token).transfer(_recipient, _amount);
+
+        // Emit the Unwrap event after burning and transferring
         emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
     }
 }
