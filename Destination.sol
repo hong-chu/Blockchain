@@ -67,7 +67,7 @@ contract Destination is AccessControl {
         BridgeToken bridgeToken = BridgeToken(wrapped_token);
         bridgeToken.mint(_recipient, _amount);
     
-        // Emit the Wrap event with correct arguments
+        // Emit the Wrap event
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
 
