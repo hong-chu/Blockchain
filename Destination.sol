@@ -23,6 +23,9 @@ contract Destination is AccessControl {
         _setupRole(WARDEN_ROLE, admin);
     }
 
+    /**
+     * @dev Creates a wrapped token for the specified underlying asset.
+     */
     function createToken(
         address _underlying_token,
         string memory name,
@@ -31,22 +34,25 @@ contract Destination is AccessControl {
         require(_underlying_token != address(0), "Invalid underlying token");
         require(wrapped_tokens[_underlying_token] == address(0), "Token already exists");
 
-        // Deploy the new wrapped token
-        BridgeToken newToken = new BridgeToken(_underlying_token, name, symbol, address(this));
+        // Deploy the wrapped token
+        BridgeToken wrapped_token = new BridgeToken(_underlying_token, name, symbol, address(this));
 
-        // Update mappings
-        wrapped_tokens[_underlying_token] = address(newToken);
-        underlying_tokens[address(newToken)] = _underlying_token;
+        // Map underlying to wrapped and vice versa
+        wrapped_tokens[_underlying_token] = address(wrapped_token);
+        underlying_tokens[address(wrapped_token)] = _underlying_token;
 
-        // Add to tokens list
+        // Add to registered tokens
         tokens.push(_underlying_token);
 
-        // Emit the Creation event
-        emit Creation(_underlying_token, address(newToken));
+        // Emit the creation event
+        emit Creation(_underlying_token, address(wrapped_token));
 
-        return address(newToken);
+        return address(wrapped_token);
     }
 
+    /**
+     * @dev Wraps the specified amount of an underlying token into its wrapped counterpart.
+     */
     function wrap(
         address _underlying_token,
         address _recipient,
@@ -56,17 +62,20 @@ contract Destination is AccessControl {
         require(_recipient != address(0), "Recipient cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
 
-        // Ensure the underlying token is registered
+        // Fetch wrapped token
         address wrapped_token = wrapped_tokens[_underlying_token];
-        require(wrapped_token != address(0), "Wrapped token not found");
+        require(wrapped_token != address(0), "Wrapped token does not exist");
 
         // Mint wrapped tokens to the recipient
         BridgeToken(wrapped_token).mint(_recipient, _amount);
 
-        // Emit the Wrap event
+        // Emit the wrap event
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
 
+    /**
+     * @dev Unwraps the specified amount of a wrapped token.
+     */
     function unwrap(
         address _wrapped_token,
         address _recipient,
@@ -76,19 +85,18 @@ contract Destination is AccessControl {
         require(_recipient != address(0), "Recipient cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
 
-        // Ensure the wrapped token is registered
+        // Fetch underlying token
         address underlying_token = underlying_tokens[_wrapped_token];
-        require(underlying_token != address(0), "Underlying token not found");
+        require(underlying_token != address(0), "Underlying token does not exist");
 
+        // Verify the sender has sufficient balance
         BridgeToken token = BridgeToken(_wrapped_token);
-
-        // Ensure the sender has enough tokens to burn
         require(token.balanceOf(msg.sender) >= _amount, "Insufficient balance");
 
-        // Burn the tokens from the sender's balance
+        // Burn the tokens from the sender
         token.burnFrom(msg.sender, _amount);
 
-        // Emit the Unwrap event
+        // Emit the unwrap event
         emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
     }
 }
