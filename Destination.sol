@@ -29,3 +29,68 @@ contract Destination is AccessControl {
      * @dev Wraps the specified amount of an underlying token into its wrapped counterpart.
      * Only addresses with the WARDEN_ROLE can call this function.
      */
+    function wrap(address _underlying_token, address _recipient, uint256 _amount) external onlyRole(WARDEN_ROLE) {
+        require(_underlying_token != address(0), "Invalid underlying token address");
+        require(_recipient != address(0), "Recipient address cannot be zero");
+        require(_amount > 0, "Amount must be greater than zero");
+        require(underlying_tokens[_underlying_token] != address(0), "Token not registered");
+
+        address wrapped_token = underlying_tokens[_underlying_token];
+        require(wrapped_token != address(0), "Wrapped token not found");
+
+        // Mint the wrapped tokens to the recipient
+        BridgeToken(wrapped_token).mint(_recipient, _amount);
+
+        emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
+    }
+
+    /**
+     * @dev Unwraps the specified amount of a wrapped token.
+     * This burns the wrapped tokens and prepares the underlying tokens to be returned to the recipient.
+     */
+    function unwrap(address _wrapped_token, address _recipient, uint256 _amount) external {
+        require(_wrapped_token != address(0), "Invalid wrapped token address");
+        require(_recipient != address(0), "Recipient address cannot be zero");
+        require(_amount > 0, "Amount must be greater than zero");
+        require(wrapped_tokens[_wrapped_token] != address(0), "Wrapped token not registered");
+
+        address underlying_token = wrapped_tokens[_wrapped_token];
+        require(underlying_token != address(0), "Underlying token not found");
+
+        // Burn the wrapped tokens from the caller
+        BridgeToken(_wrapped_token).burnFrom(msg.sender, _amount);
+
+        emit Unwrap(_wrapped_token, underlying_token, _recipient, _amount);
+    }
+
+    /**
+     * @dev Creates a wrapped token for the specified underlying asset.
+     * Can only be called by addresses with the CREATOR_ROLE.
+     */
+    function createToken(address _underlying_token, string memory name, string memory symbol)
+        external
+        onlyRole(CREATOR_ROLE)
+        returns (address)
+    {
+        require(_underlying_token != address(0), "Invalid underlying token address");
+        require(underlying_tokens[_underlying_token] == address(0), "Token already registered");
+
+        // Deploy new BridgeToken
+        BridgeToken wrapped_token = new BridgeToken(_underlying_token, name, symbol, msg.sender);
+
+        // Register the token mappings
+        underlying_tokens[_underlying_token] = address(wrapped_token);
+        wrapped_tokens[address(wrapped_token)] = _underlying_token;
+        tokens.push(_underlying_token);
+
+        emit Creation(_underlying_token, address(wrapped_token));
+        return address(wrapped_token);
+    }
+
+    /**
+     * @dev Returns the list of registered underlying tokens.
+     */
+    function getTokens() external view returns (address[] memory) {
+        return tokens;
+    }
+}
