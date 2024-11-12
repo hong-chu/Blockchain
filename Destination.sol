@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./BridgeToken.sol";
 
 contract Destination is AccessControl {
     bytes32 public constant WARDEN_ROLE = keccak256("BRIDGE_WARDEN_ROLE");
     bytes32 public constant CREATOR_ROLE = keccak256("CREATOR_ROLE");
+
+    // Mapping from underlying token address (source chain) to wrapped token address (destination chain)
     mapping(address => address) public underlying_tokens;
+
+    // Mapping from wrapped token address (destination chain) to underlying token address (source chain)
     mapping(address => address) public wrapped_tokens;
+
     address[] public tokens;
 
     event Creation(address indexed underlying_token, address indexed wrapped_token);
@@ -35,9 +39,9 @@ contract Destination is AccessControl {
     function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public {
         require(wrapped_tokens[_wrapped_token] != address(0), "Wrapped token does not exist");
 
-        // Burn the wrapped tokens from the sender
+        // Burn the wrapped tokens from the sender's account
         BridgeToken token = BridgeToken(_wrapped_token);
-        token.burnFrom(msg.sender, _amount);
+        token.burn(_amount);
 
         address underlying_token = wrapped_tokens[_wrapped_token];
 
