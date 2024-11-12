@@ -78,7 +78,7 @@ contract Destination is AccessControl {
         address _wrapped_token,
         address _recipient,
         uint256 _amount
-    ) public onlyRole(WARDEN_ROLE) {
+    ) public {
         require(_wrapped_token != address(0), "Invalid wrapped token");
         require(_recipient != address(0), "Recipient cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
