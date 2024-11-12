@@ -49,7 +49,7 @@ contract Destination is AccessControl {
 
         return address(newToken);
     }
-        
+            
     function wrap(
         address _underlying_token,
         address _recipient,
@@ -59,11 +59,11 @@ contract Destination is AccessControl {
         require(_recipient != address(0), "Recipient address cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
     
-        // Retrieve the wrapped token address associated with the underlying token
+        // Retrieve the wrapped token corresponding to the underlying token
         address wrapped_token = wrapped_tokens[_underlying_token];
         require(wrapped_token != address(0), "Wrapped token not registered");
     
-        // Mint the specified amount of the wrapped token to the recipient
+        // Mint the wrapped tokens to the recipient
         BridgeToken bridgeToken = BridgeToken(wrapped_token);
         bridgeToken.mint(_recipient, _amount);
     
