@@ -63,7 +63,7 @@ contract Destination is AccessControl {
         address _underlying_token,
         address _recipient,
         uint256 _amount
-    ) public onlyRole(WARDEN_ROLE) {
+    ) public {
         require(_underlying_token != address(0), "Invalid underlying token address");
         require(_recipient != address(0), "Recipient cannot be zero address");
         require(_amount > 0, "Amount must be greater than zero");
@@ -85,20 +85,21 @@ contract Destination is AccessControl {
         address _wrapped_token,
         address _recipient,
         uint256 _amount
-    ) public onlyRole(WARDEN_ROLE) {
-        require(_wrapped_token != address(0), "Invalid wrapped token");
-        require(_recipient != address(0), "Invalid recipient address");
+    ) public {
+        require(_wrapped_token != address(0), "Invalid wrapped token address");
+        require(_recipient != address(0), "Recipient cannot be zero address");
         require(_amount > 0, "Amount must be greater than zero");
 
         address underlying_token = underlying_tokens[_wrapped_token];
         require(underlying_token != address(0), "Underlying token not registered");
 
-        // Burn wrapped tokens from sender
+        // Burn the wrapped tokens
         BridgeToken(_wrapped_token).burnFrom(msg.sender, _amount);
 
-        // Emit unwrap event
+        // Emit the `Unwrap` event
         emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
     }
+
 
     /**
      * @dev Returns the list of all registered underlying tokens.
