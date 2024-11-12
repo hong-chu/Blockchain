@@ -55,12 +55,18 @@ contract Destination is AccessControl {
         address _recipient,
         uint256 _amount
     ) public onlyRole(WARDEN_ROLE) {
+        require(_underlying_token != address(0), "Invalid underlying token address");
+        require(_recipient != address(0), "Recipient address cannot be zero");
+        require(_amount > 0, "Amount must be greater than zero");
+    
+        // Check if the underlying token has been registered
         address wrapped_token = wrapped_tokens[_underlying_token];
         require(wrapped_token != address(0), "Wrapped token does not exist");
-
-        // Mint the wrapped tokens to the recipient
+    
+        // Mint the specified amount of the wrapped token to the recipient
         BridgeToken(wrapped_token).mint(_recipient, _amount);
-
+    
+        // Emit the Wrap event with the correct parameters
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
     }
 
