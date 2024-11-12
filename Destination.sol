@@ -52,11 +52,19 @@ contract Destination is AccessControl {
     /**
      * @dev Unwraps the specified amount of a wrapped token, burning it and preparing to return the underlying token.
      */
-    function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public onlyRole(WARDEN_ROLE) {
-        ERC20(_wrapped_token).transferFrom(_recipient, address(this), _amount);
-        ERC20(wrapped_tokens[_wrapped_token]).transfer(_recipient, _amount);
-        emit Unwrap(_wrapped_token, wrapped_tokens[_wrapped_token], _recipient, _amount);
-    
+     function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public onlyRole(WARDEN_ROLE) {
+        require(_wrapped_token != address(0), "Invalid wrapped token address");
+        require(_recipient != address(0), "Recipient address cannot be zero");
+        require(_amount > 0, "Amount must be greater than zero");
+        require(wrapped_tokens[_wrapped_token] != address(0), "Wrapped token not registered");
+
+        address underlying_token = wrapped_tokens[_wrapped_token];
+        require(underlying_token != address(0), "Underlying token not found");
+
+        // Burn the wrapped tokens from the sender
+        BridgeToken(_wrapped_token).burnFrom(msg.sender, _amount);
+
+        emit Unwrap(underlying_token, _wrapped_token, msg.sender, _recipient, _amount);
     }
 
 }
