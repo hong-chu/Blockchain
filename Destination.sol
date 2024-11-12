@@ -14,6 +14,7 @@ contract Destination is AccessControl {
     // Mapping from wrapped token address (destination chain) to underlying token address (source chain)
     mapping(address => address) public wrapped_tokens;
 
+    // List of wrapped tokens
     address[] public tokens;
 
     event Creation(address indexed underlying_token, address indexed wrapped_token);
@@ -21,9 +22,9 @@ contract Destination is AccessControl {
     event Unwrap(address indexed underlying_token, address indexed wrapped_token, address frm, address indexed to, uint256 amount);
 
     constructor(address admin) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(CREATOR_ROLE, admin);
-        _grantRole(WARDEN_ROLE, admin);
+        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _setupRole(CREATOR_ROLE, admin);
+        _setupRole(WARDEN_ROLE, admin);
     }
 
     function wrap(address _underlying_token, address _recipient, uint256 _amount) public onlyRole(WARDEN_ROLE) {
@@ -58,6 +59,8 @@ contract Destination is AccessControl {
         // Map the underlying token to the new wrapped token
         underlying_tokens[_underlying_token] = address(newToken);
         wrapped_tokens[address(newToken)] = _underlying_token;
+
+        // Update the tokens list
         tokens.push(address(newToken));
 
         emit Creation(_underlying_token, address(newToken));
