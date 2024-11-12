@@ -35,7 +35,7 @@ contract Destination is AccessControl {
         address _underlying_token,
         string memory name,
         string memory symbol
-    ) public onlyRole(CREATOR_ROLE) returns (address) {
+    ) public returns (address) {
         require(_underlying_token != address(0), "Underlying token address cannot be zero");
         require(wrapped_tokens[_underlying_token] == address(0), "Token already exists");
 
