@@ -27,6 +27,9 @@ contract Destination is AccessControl {
     	// Get the wrapped token address
         address wrapped_token = underlying_tokens[_underlying_token];
     
+        // Ensure sufficient approval
+        IERC20(_underlying_token).approve(address(this), _amount);
+    
         // Transfer the underlying token from the sender to this contract
         IERC20(_underlying_token).transferFrom(msg.sender, address(this), _amount);
     
@@ -34,6 +37,7 @@ contract Destination is AccessControl {
         BridgeToken(wrapped_token).mint(_recipient, _amount);
     
         emit Wrap(_underlying_token, wrapped_token, _recipient, _amount);
+    
 	}
 
 	function unwrap(address _wrapped_token, address _recipient, uint256 _amount ) public {
