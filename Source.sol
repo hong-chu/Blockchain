@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./BridgeToken.sol"; // Import the BridgeToken contract
+import "./BridgeToken.sol"; // Ensure this import is correct
 
 contract Source is AccessControl {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -27,7 +27,7 @@ contract Source is AccessControl {
 
     /*
         Allows users to deposit approved tokens.
-        Transfers the underlying tokens to the contract and mints BridgeTokens to the recipient.
+        Transfers the underlying tokens to the contract and mints BridgeTokens to the depositor.
     */
     function deposit(address _token, address _recipient, uint256 _amount) public {
         require(approved[_token], "Token not approved");
@@ -37,10 +37,11 @@ contract Source is AccessControl {
         // Transfer underlying tokens from sender to this contract
         ERC20(_token).transferFrom(msg.sender, address(this), _amount);
 
-        // Mint BridgeTokens to the recipient
+        // Mint BridgeTokens to the depositor (msg.sender)
         BridgeToken bridgeToken = bridgeTokens[_token];
-        bridgeToken.mint(_recipient, _amount);
+        bridgeToken.mint(msg.sender, _amount);
 
+        // Emit the Deposit event with the provided _recipient
         emit Deposit(_token, _recipient, _amount);
     }
 
@@ -53,11 +54,11 @@ contract Source is AccessControl {
         require(_amount > 0, "Amount must be greater than zero");
         require(_recipient != address(0), "Invalid recipient address");
 
-        // Burn BridgeTokens from the recipient
+        // Burn BridgeTokens from the _recipient
         BridgeToken bridgeToken = bridgeTokens[_token];
         bridgeToken.burnFrom(_recipient, _amount);
 
-        // Transfer underlying tokens from this contract to the recipient
+        // Transfer underlying tokens from this contract to the _recipient
         ERC20(_token).transfer(_recipient, _amount);
 
         emit Withdrawal(_token, _recipient, _amount);
