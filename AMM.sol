@@ -47,30 +47,36 @@ contract AMM is AccessControl{
 
 		The contract must calculate buyAmount using the formula:
 	*/
-	function tradeTokens( address sellToken, uint256 sellAmount ) public {
-		require( invariant > 0, 'Invariant must be nonzero' );
-		require( sellToken == tokenA || sellToken == tokenB, 'Invalid token' );
-		require( sellAmount > 0, 'Cannot trade 0' );
-		require( invariant > 0, 'No liquidity' );
-		uint256 qtyA;
-		uint256 qtyB;
-		uint256 swapAmt;
-
-		//YOUR CODE HERE
+    function tradeTokens(address sellToken, uint256 sellAmount) public {
+        require(invariant > 0, 'Invariant must be nonzero');
+        require(sellToken == tokenA || sellToken == tokenB, 'Invalid token');
+        require(sellAmount > 0, 'Cannot trade 0');
+        
+        // Transfer sell tokens from user to contract
+        require(ERC20(sellToken).transferFrom(msg.sender, address(this), sellAmount), 'Transfer failed');
+        
+        address buyToken = (sellToken == tokenA) ? tokenB : tokenA;
+        uint256 buyAmount;
+        
+        // Calculate amounts after fee
+        uint256 sellAmountAfterFee = (sellAmount * (10000 - feebps)) / 10000;
+        
         if (sellToken == tokenA) {
-            swapAmt = sellAmount;
-            qtyA = ERC20(tokenA).balanceOf(address(this)) - swapAmt;
-            qtyB = invariant / qtyA;
+            uint256 reserveA = ERC20(tokenA).balanceOf(address(this)) - sellAmount;
+            buyAmount = ERC20(tokenB).balanceOf(address(this)) - (invariant / (reserveA + sellAmountAfterFee));
         } else {
-            swapAmt = sellAmount;
-            qtyB = ERC20(tokenB).balanceOf(address(this)) - swapAmt;
-            qtyA = invariant / qtyB;
+            uint256 reserveB = ERC20(tokenB).balanceOf(address(this)) - sellAmount;
+            buyAmount = ERC20(tokenA).balanceOf(address(this)) - (invariant / (reserveB + sellAmountAfterFee));
         }
-
-		uint256 new_invariant = ERC20(tokenA).balanceOf(address(this))*ERC20(tokenB).balanceOf(address(this));
-		require( new_invariant >= invariant, 'Bad trade' );
-		invariant = new_invariant;
-	}
+        
+        require(buyAmount > 0, 'Insufficient output amount');
+        require(ERC20(buyToken).transfer(msg.sender, buyAmount), 'Transfer failed');
+        
+        // Update invariant
+        invariant = ERC20(tokenA).balanceOf(address(this)) * ERC20(tokenB).balanceOf(address(this));
+        
+        emit Swap(sellToken, buyToken, sellAmount, buyAmount);
+    }
 
 	/*
 		Use the ERC20 transferFrom to "pull" amtA of tokenA and amtB of tokenB from the sender
