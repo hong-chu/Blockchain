@@ -1,3 +1,11 @@
+from web3 import Web3
+from web3.middleware import geth_poa_middleware
+import json
+import csv
+from datetime import datetime
+
+eventfile = 'deposit_logs.csv'
+
 def scanBlocks(chain, start_block, end_block, contract_address):
     """
     Reads "Deposit" events from the specified contract and writes information
