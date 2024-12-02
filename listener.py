@@ -13,9 +13,9 @@ def scanBlocks(chain, start_block, end_block, contract_address):
     """
     # RPC endpoints
     if chain == 'avax':
-        api_url = f"https://api.avax-test.network/ext/bc/C/rpc"  # AVAX C-chain testnet
+        api_url = "https://api.avax-test.network/ext/bc/C/rpc"  # AVAX C-chain testnet
     elif chain == 'bsc':
-        api_url = f"https://data-seed-prebsc-1-s1.binance.org:8545/"  # BSC testnet
+        api_url = "https://data-seed-prebsc-1-s1.binance.org:8545/"  # BSC testnet
     else:
         raise ValueError("Unsupported chain. Choose either 'avax' or 'bsc'.")
 
@@ -72,5 +72,14 @@ def scanBlocks(chain, start_block, end_block, contract_address):
         )
 
     # Write data to CSV
-    df = pd.DataFrame(all_events)
-    df.to_csv(eventfile, index=False, mode='a', header=not pd.read_csv(eventfile).empty)
+    try:
+        # If the file exists, append data without duplicating headers
+        existing_df = pd.read_csv(eventfile)
+        df = pd.DataFrame(all_events)
+        final_df = pd.concat([existing_df, df], ignore_index=True)
+    except FileNotFoundError:
+        # If the file doesn't exist, create it with headers
+        df = pd.DataFrame(all_events)
+        final_df = df
+
+    final_df.to_csv(eventfile, index=False)
