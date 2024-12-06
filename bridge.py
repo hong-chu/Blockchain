@@ -59,37 +59,91 @@ def scanBlocks(chain):
         When Unwrap events are found on the destination chain, call the 'withdraw' function on the source chain
     """
 
-    if chain not in ['source','destination']:
-        print( f"Invalid chain: {chain}" )
+    if chain not in ['source', 'destination']:
+        print(f"Invalid chain: {chain}")
         return
 
-    w3 = connectTo(chain)
-    contract = getContractInfo(chain)
-    contract_address = contract['address']
-    contract_abi = contract['abi']
+    # Connect to the appropriate blockchain
+    if chain == 'source':
+        chain_name = source_chain
+    else:
+        chain_name = destination_chain
+
+    w3 = connectTo(chain_name)
+    contract_info = getContractInfo(chain_name)
+    contract_address = contract_info["address"]
+    contract_abi = contract_info["abi"]
+
     contract = w3.eth.contract(address=contract_address, abi=contract_abi)
 
+    # Get the latest block number and the range for the last 5 blocks
+    latest_block = w3.eth.get_block_number()
+    start_block = max(0, latest_block - 4)
+    end_block = latest_block
+
+    print(f"Scanning blocks {start_block} to {end_block} on {chain_name}.")
+
     if chain == 'source':
-        event_filter = contract.events.Deposit.create_filter(fromBlock=w3.eth.block_number-5,toBlock=w3.eth.block_number)
-        events = event_filter.get_all_entries()
-        for event in events:
-            print(event)
-            print(event['args'])
-            print(event['args']['amount'])
-            print(event['args']['recipient'])
-            print(event['args']['token'])
-
+        event_name = "Deposit"
     else:
-        event_filter = contract.events.Unwrap.create_filter(fromBlock=w3.eth.block_number-5,toBlock=w3.eth.block_number)
-        events = event_filter.get_all_entries()
-        for event in events:
-            print(event)
-            print(event['args'])
-            print(event['args']['amount'])
-            print(event['args']['recipient'])
-            print(event['args']['token'])
+        event_name = "Unwrap"
 
-                
+    # Set up the event filter
+    try:
+        event_filter = getattr(contract.events, event_name).create_filter(
+            fromBlock=start_block, toBlock=end_block
+        )
+        events = event_filter.get_all_entries()
+
+        for event in events:
+            args = event["args"]
+            transaction_hash = event["transactionHash"].hex()
+
+            if event_name == "Deposit":
+                token = args["token"]
+                recipient = args["recipient"]
+                amount = args["amount"]
+
+                print(
+                    f"Deposit Event: Token {token}, Recipient {recipient}, Amount {amount}, TxHash {transaction_hash}"
+                )
+
+                # Call the wrap function on the destination chain
+                dest_contract_info = getContractInfo(destination_chain)
+                dest_contract = w3.eth.contract(
+                    address=dest_contract_info["address"],
+                    abi=dest_contract_info["abi"],
+                )
+
+                # Wrap logic
+                dest_contract.functions.wrap(token, recipient, amount).transact(
+                    {"from": w3.eth.default_account}
+                )
+
+            elif event_name == "Unwrap":
+                token = args["token"]
+                recipient = args["recipient"]
+                amount = args["amount"]
+
+                print(
+                    f"Unwrap Event: Token {token}, Recipient {recipient}, Amount {amount}, TxHash {transaction_hash}"
+                )
+
+                # Call the withdraw function on the source chain
+                source_contract_info = getContractInfo(source_chain)
+                source_contract = w3.eth.contract(
+                    address=source_contract_info["address"],
+                    abi=source_contract_info["abi"],
+                )
+
+                # Withdraw logic
+                source_contract.functions.withdraw(token, recipient, amount).transact(
+                    {"from": w3.eth.default_account}
+                )
+
+    except Exception as e:
+        print(f"Error while processing events: {e}")
+
 
 
 
