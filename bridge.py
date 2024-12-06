@@ -52,44 +52,42 @@ def getContractInfo(chain):
 
 def scanBlocks(chain):
     """
-        chain - (string) should be either "source" or "destination"
-        Scan the last 5 blocks of the source and destination chains
-        Look for 'Deposit' events on the source chain and 'Unwrap' events on the destination chain
-        When Deposit events are found on the source chain, call the 'wrap' function the destination chain
-        When Unwrap events are found on the destination chain, call the 'withdraw' function on the source chain
+    chain - (string) should be either "source" or "destination"
+    Scan the last 5 blocks of the source and destination chains
+    Look for 'Deposit' events on the source chain and 'Unwrap' events on the destination chain
+    When Deposit events are found on the source chain, call the 'wrap' function the destination chain
+    When Unwrap events are found on the destination chain, call the 'withdraw' function on the source chain
     """
 
     if chain not in ['source', 'destination']:
         print(f"Invalid chain: {chain}")
         return
 
-    # Connect to the appropriate blockchain
-    if chain == 'source':
-        chain_name = source_chain
-    else:
-        chain_name = destination_chain
+    # Load contract info
+    contract_info = getContractInfo(chain)
 
-    w3 = connectTo(chain_name)
-    contract_info = getContractInfo(chain_name)
-    contract_address = contract_info["address"]
-    contract_abi = contract_info["abi"]
+    # Connect to the specified chain
+    w3 = connectTo(chain)
+    target_chain = destination_chain if chain == 'source' else source_chain
+    target_w3 = connectTo(target_chain)
 
-    contract = w3.eth.contract(address=contract_address, abi=contract_abi)
+    contract = w3.eth.contract(address=contract_info['address'], abi=contract_info['abi'])
+    target_contract_info = getContractInfo(target_chain)
+    target_contract = target_w3.eth.contract(address=target_contract_info['address'], abi=target_contract_info['abi'])
 
-    # Get the latest block number and the range for the last 5 blocks
+    # Determine the event and function to handle
+    event_name = 'Deposit' if chain == 'source' else 'Unwrap'
+    target_function = 'wrap' if chain == 'source' else 'withdraw'
+
+    # Scan the last 5 blocks
     latest_block = w3.eth.get_block_number()
-    start_block = max(0, latest_block - 4)
+    start_block = max(0, latest_block - 5)
     end_block = latest_block
 
-    print(f"Scanning blocks {start_block} to {end_block} on {chain_name}.")
+    print(f"Scanning {event_name} events on {chain} from blocks {start_block} to {end_block}...")
 
-    if chain == 'source':
-        event_name = "Deposit"
-    else:
-        event_name = "Unwrap"
-
-    # Set up the event filter
     try:
+        # Filter and process events
         event_filter = getattr(contract.events, event_name).create_filter(
             fromBlock=start_block, toBlock=end_block
         )
@@ -98,52 +96,22 @@ def scanBlocks(chain):
         for event in events:
             args = event["args"]
             transaction_hash = event["transactionHash"].hex()
+            token = args.get("token")
+            recipient = args.get("recipient")
+            amount = args.get("amount")
 
-            if event_name == "Deposit":
-                token = args["token"]
-                recipient = args["recipient"]
-                amount = args["amount"]
+            print(f"{event_name} Event: Token {token}, Recipient {recipient}, Amount {amount}, TxHash {transaction_hash}")
 
-                print(
-                    f"Deposit Event: Token {token}, Recipient {recipient}, Amount {amount}, TxHash {transaction_hash}"
+            # Call the appropriate function on the target chain
+            if target_function == 'wrap':
+                target_contract.functions.wrap(token, recipient, amount).transact(
+                    {"from": target_w3.eth.default_account}
                 )
-
-                # Call the wrap function on the destination chain
-                dest_contract_info = getContractInfo(destination_chain)
-                dest_contract = w3.eth.contract(
-                    address=dest_contract_info["address"],
-                    abi=dest_contract_info["abi"],
+                print(f"Called wrap on {target_chain} for {amount} tokens to {recipient}.")
+            elif target_function == 'withdraw':
+                target_contract.functions.withdraw(token, recipient, amount).transact(
+                    {"from": target_w3.eth.default_account}
                 )
-
-                # Wrap logic
-                dest_contract.functions.wrap(token, recipient, amount).transact(
-                    {"from": w3.eth.default_account}
-                )
-
-            elif event_name == "Unwrap":
-                token = args["token"]
-                recipient = args["recipient"]
-                amount = args["amount"]
-
-                print(
-                    f"Unwrap Event: Token {token}, Recipient {recipient}, Amount {amount}, TxHash {transaction_hash}"
-                )
-
-                # Call the withdraw function on the source chain
-                source_contract_info = getContractInfo(source_chain)
-                source_contract = w3.eth.contract(
-                    address=source_contract_info["address"],
-                    abi=source_contract_info["abi"],
-                )
-
-                # Withdraw logic
-                source_contract.functions.withdraw(token, recipient, amount).transact(
-                    {"from": w3.eth.default_account}
-                )
-
+                print(f"Called withdraw on {target_chain} for {amount} tokens to {recipient}.")
     except Exception as e:
-        print(f"Error while processing events: {e}")
-
-
-
-
+        print(f"Error scanning blocks: {e}")
