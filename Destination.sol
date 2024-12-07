@@ -18,9 +18,9 @@ contract Destination is AccessControl {
 
     constructor(address admin) {
         require(admin != address(0), "Admin cannot be zero address");
-        _setupRole(DEFAULT_ADMIN_ROLE, admin);
-        _setupRole(CREATOR_ROLE, admin);
-        _setupRole(WARDEN_ROLE, admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(CREATOR_ROLE, admin);
+        _grantRole(WARDEN_ROLE, admin);
     }
 
     /**
