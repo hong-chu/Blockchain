@@ -104,6 +104,8 @@ def withdraw(wrapped_token, recipient, amount):
     except Exception as e:
         print(f"Failed to send withdraw transaction: {e}")
 
+# ... (previous code remains the same until scanBlocks function) ...
+
 def scanBlocks(chain):
     """
     Scans the last 5 blocks for events and responds accordingly.
@@ -123,35 +125,70 @@ def scanBlocks(chain):
 
         # Fetch latest block number
         latest_block = w3.eth.get_block_number()
-        print(f"Scanning blocks {max(latest_block - 5, 1)} to {latest_block} on {chain} chain...")
+        start_block = max(latest_block - 5, 1)
+        print(f"Scanning blocks {start_block} to {latest_block} on {chain} chain...")
 
+        # Create event filters
         if chain == 'source':
-            # Listen for Deposit events
-            events = contract.events.Deposit.create_filter(
-                fromBlock=max(latest_block - 5, 1),
-                toBlock='latest'
-            ).get_all_entries()
+            event_filter = contract.events.Deposit.create_filter(
+                fromBlock=start_block,
+                toBlock=latest_block
+            )
+            events = event_filter.get_all_entries()
+            
+            # Process Deposit events
             for event in events:
-                token = event.args['token']
-                recipient = event.args['recipient']
-                amount = event.args['amount']
-                print(f"Deposit Event - Token: {token}, Recipient: {recipient}, Amount: {amount}")
+                token = event['args']['token']
+                recipient = event['args']['recipient']
+                amount = event['args']['amount']
+                print(f"Deposit event found: Token={token}, Recipient={recipient}, Amount={amount}")
+                
+                # Call wrap on destination chain
                 wrap(token, recipient, amount)
+
         elif chain == 'destination':
-            # Listen for Unwrap events
-            events = contract.events.Unwrap.create_filter(
-                fromBlock=max(latest_block - 5, 1),
-                toBlock='latest'
-            ).get_all_entries()
+            event_filter = contract.events.Unwrap.create_filter(
+                fromBlock=start_block,
+                toBlock=latest_block
+            )
+            events = event_filter.get_all_entries()
+            
+            # Process Unwrap events
             for event in events:
-                wrapped_token = event.args['wrapped_token']
-                recipient = event.args['to']
-                amount = event.args['amount']
-                print(f"Unwrap Event - WrappedToken: {wrapped_token}, Recipient: {recipient}, Amount: {amount}")
+                wrapped_token = event['args']['wrappedToken']
+                recipient = event['args']['recipient']
+                amount = event['args']['amount']
+                print(f"Unwrap event found: WrappedToken={wrapped_token}, Recipient={recipient}, Amount={amount}")
+                
+                # Call withdraw on source chain
                 withdraw(wrapped_token, recipient, amount)
+
     except Exception as e:
-        print(f"Failed to scan blocks on {chain} chain: {e}")
+        print(f"Error scanning blocks: {e}")
+
+# def main():
+#     """
+#     Main function to continuously monitor both chains
+#     """
+#     while True:
+#         try:
+#             # Scan source chain for Deposit events
+#             scanBlocks('source')
+            
+#             # Scan destination chain for Unwrap events
+#             scanBlocks('destination')
+            
+#             # Wait for a few seconds before next scan
+#             time.sleep(5)
+            
+#         except KeyboardInterrupt:
+#             print("\nStopping the bridge monitor...")
+#             break
+#         except Exception as e:
+#             print(f"Error in main loop: {e}")
+#             time.sleep(5)
 
 # if __name__ == "__main__":
-#     scanBlocks('source')
-#     scanBlocks('destination')
+#     import time
+#     main()
+    
