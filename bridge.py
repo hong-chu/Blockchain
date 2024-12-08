@@ -283,7 +283,10 @@ def scanBlocks(chain):
 
 
 if __name__ == "__main__":
+    print('1')
     registerToken('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
+    print('2')
     createToken('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
+    print('3')
 
     
