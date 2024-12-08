@@ -85,7 +85,7 @@ def registerToken(token_address):
         register_tx = source_contract.functions.registerToken(token_address).build_transaction({
             'from': source_address_checksum,
             'nonce': source_nonce,
-            'gas': 1000000,
+            'gas': 2*10**6,
             'gasPrice': gas_price,
             'chainId': source_w3.eth.chain_id
         })
@@ -109,7 +109,7 @@ def registerToken(token_address):
         create_tx = dest_contract.functions.createToken(token_address, wrapped_name, wrapped_symbol).build_transaction({
             'from': dest_address_checksum,
             'nonce': dest_nonce,
-            'gas': 1000000,
+            'gas': 2*10**6,
             'gasPrice': dest_gas_price,
             'chainId': dest_w3.eth.chain_id
         })
@@ -146,17 +146,22 @@ def createToken(token_address):
         DEST_PRIVATE_KEY = "0x9ead96f0d944bb419abaf49efa5f54a77a37754f398651c984eb156a867327e0"
         dest_account = dest_w3.eth.account.from_key(DEST_PRIVATE_KEY)
 
+        # Generate the name and symbol for the wrapped token
+        wrapped_name = f"Wrapped {token_address[:6]}"
+        wrapped_symbol = f"W{token_address[:3].upper()}"
+
         # Build the transaction
         nonce = dest_w3.eth.get_transaction_count(dest_account.address, 'pending')
         gas_price = dest_w3.eth.gas_price
 
-        # Adjust gas limit to handle createToken's requirements
         tx = dest_contract.functions.createToken(
-            Web3.to_checksum_address(token_address)
+            Web3.to_checksum_address(token_address),
+            wrapped_name,
+            wrapped_symbol
         ).build_transaction({
             'from': dest_account.address,
             'nonce': nonce,
-            'gas': 20000000,  # Increase gas limit
+            'gas': 2*10**6,
             'gasPrice': gas_price,
             'chainId': dest_w3.eth.chain_id
         })
@@ -171,6 +176,7 @@ def createToken(token_address):
 
     except Exception as e:
         print(f"Failed to create wrapped token for {token_address}: {e}")
+
 
 
 
@@ -232,7 +238,7 @@ def scanBlocks(chain):
 
                 tx = dest_contract.functions.wrap(token, recipient, amount).build_transaction({
                     'chainId': dest_w3.eth.chain_id,
-                    'gas': 20000000,
+                    'gas': 2*10**6,
                     'gasPrice': dest_w3.eth.gas_price,
                     'nonce': dest_w3.eth.get_transaction_count(dest_account.address),
                 })
@@ -266,7 +272,7 @@ def scanBlocks(chain):
 
                 tx = source_contract.functions.withdraw(wrapped_token, recipient, amount).build_transaction({
                     'chainId': source_w3.eth.chain_id,
-                    'gas': 20000000,
+                    'gas': 2*10**6,
                     'gasPrice': source_w3.eth.gas_price,
                     'nonce': source_w3.eth.get_transaction_count(source_account.address),
                 })
@@ -277,8 +283,8 @@ def scanBlocks(chain):
             print(f"Error processing Unwrap events: {e}")
 
 
-if __name__ == "__main__":
-    registerToken('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
-    createToken('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
+# if __name__ == "__main__":
+#     registerToken('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
+#     createToken('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
 
     
