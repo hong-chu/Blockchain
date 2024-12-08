@@ -146,12 +146,18 @@ def createToken(token_address):
         DEST_PRIVATE_KEY = "0x9ead96f0d944bb419abaf49efa5f54a77a37754f398651c984eb156a867327e0"
         dest_account = dest_w3.eth.account.from_key(DEST_PRIVATE_KEY)
 
+        # Generate the name and symbol for the wrapped token
+        wrapped_name = f"Wrapped {token_address[:6]}"
+        wrapped_symbol = f"W{token_address[:3].upper()}"
+
         # Build the transaction
         nonce = dest_w3.eth.get_transaction_count(dest_account.address, 'pending')
         gas_price = dest_w3.eth.gas_price
 
         tx = dest_contract.functions.createToken(
-            Web3.to_checksum_address(token_address)
+            Web3.to_checksum_address(token_address),
+            wrapped_name,
+            wrapped_symbol
         ).build_transaction({
             'from': dest_account.address,
             'nonce': nonce,
@@ -170,6 +176,7 @@ def createToken(token_address):
 
     except Exception as e:
         print(f"Failed to create wrapped token for {token_address}: {e}")
+
 
 
 def scanBlocks(chain):
