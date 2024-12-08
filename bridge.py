@@ -39,7 +39,8 @@ def getContractInfo(chain):
 
     return contracts[chain]
 
-def registerTokens(token_address):
+
+def registerToken(token_address):
     """
     Registers the given token on the source chain and creates a wrapped token on the destination chain.
     """
@@ -119,6 +120,57 @@ def registerTokens(token_address):
         print(f"Created wrapped token for {token_address} on destination contract. TxHash: {create_tx_hash.hex()}")
     except Exception as e:
         print(f"Failed to create wrapped token {token_address} on destination chain: {e}")
+
+
+def createToken(token_address):
+    """
+    Calls the createToken function on the destination contract to create a wrapped token.
+
+    Parameters:
+        token_address (str): The address of the original token on the source chain.
+    """
+    try:
+        # Load destination contract info
+        destination_info = getContractInfo('destination')
+
+        # Connect to the destination chain
+        dest_w3 = connectTo(destination_chain)
+
+        # Load the destination contract
+        dest_contract = dest_w3.eth.contract(
+            address=Web3.to_checksum_address(destination_info["address"]),
+            abi=destination_info["abi"]
+        )
+
+        # Load private key for the destination chain
+        DEST_PRIVATE_KEY = "0x9ead96f0d944bb419abaf49efa5f54a77a37754f398651c984eb156a867327e0"
+        dest_account = dest_w3.eth.account.from_key(DEST_PRIVATE_KEY)
+
+        # Build the transaction
+        nonce = dest_w3.eth.get_transaction_count(dest_account.address, 'pending')
+        gas_price = dest_w3.eth.gas_price
+
+        tx = dest_contract.functions.createToken(
+            Web3.to_checksum_address(token_address)
+        ).build_transaction({
+            'from': dest_account.address,
+            'nonce': nonce,
+            'gas': 200000,
+            'gasPrice': gas_price,
+            'chainId': dest_w3.eth.chain_id
+        })
+
+        # Sign and send the transaction
+        signed_tx = dest_w3.eth.account.sign_transaction(tx, private_key=DEST_PRIVATE_KEY)
+        tx_hash = dest_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+        # Wait for the transaction to be confirmed
+        receipt = dest_w3.eth.wait_for_transaction_receipt(tx_hash)
+        print(f"Created wrapped token for {token_address}. TxHash: {tx_hash.hex()}, Block: {receipt.blockNumber}")
+
+    except Exception as e:
+        print(f"Failed to create wrapped token for {token_address}: {e}")
+
 
 def scanBlocks(chain):
     """
@@ -224,7 +276,7 @@ def scanBlocks(chain):
 
 
 if __name__ == "__main__":
-    registerTokens('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
+    registerToken('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
     createToken('0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c')
 
     
