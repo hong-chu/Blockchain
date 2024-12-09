@@ -156,11 +156,12 @@ def scanBlocks(chain):
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
-                wrapped_token = event.args['wrapped_token']
+                # Updated to use 'underlying_token' instead of 'wrapped_token'
+                token = event.args['underlying_token']  # This is the key change
                 recipient = event.args['to']
                 amount = event.args['amount']
-                print(f"Unwrap Event - WrappedToken: {wrapped_token}, Recipient: {recipient}, Amount: {amount}")
-                withdraw(wrapped_token, recipient, amount)
+                print(f"Unwrap Event - Token: {token}, Recipient: {recipient}, Amount: {amount}")
+                withdraw(token, recipient, amount)
                 
     except Exception as e:
         print(f"Failed to scan blocks on {chain} chain: {e}")
