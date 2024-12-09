@@ -155,20 +155,8 @@ def scanBlocks(chain):
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
-                # Debug print to see all available args
-                print("Full event args:", event.args)
-                
-                # Let's try to access all possible keys
-                try:
-                    print("Trying to access different possible keys:")
-                    print("underlying_token:", event.args.get('underlying_token'))
-                    print("wrapped_token:", event.args.get('wrapped_token'))
-                    print("token:", event.args.get('token'))
-                except Exception as e:
-                    print(f"Error accessing keys: {e}")
-
-                # For now, let's use underlying_token
-                token = event.args['underlying_token']
+                # Use wrapped_token instead of underlying_token
+                token = event.args['token']  # This is the key change!
                 recipient = event.args['to']
                 amount = event.args['amount']
                 print(f"Unwrap Event - Token: {token}, Recipient: {recipient}, Amount: {amount}")
