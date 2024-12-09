@@ -150,19 +150,29 @@ def scanBlocks(chain):
                 wrap(token, recipient, amount)
 
         elif chain == 'destination':
-            # Listen for Unwrap events
             events = contract.events.Unwrap.create_filter(
                 fromBlock=max(latest_block - 5, 1),
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
-                # Updated to use 'underlying_token' instead of 'wrapped_token'
-                token = event.args['underlying_token']  # This is the key change
+                # Debug print to see all available args
+                print("Full event args:", event.args)
+                
+                # Let's try to access all possible keys
+                try:
+                    print("Trying to access different possible keys:")
+                    print("underlying_token:", event.args.get('underlying_token'))
+                    print("wrapped_token:", event.args.get('wrapped_token'))
+                    print("token:", event.args.get('token'))
+                except Exception as e:
+                    print(f"Error accessing keys: {e}")
+
+                # For now, let's use underlying_token
+                token = event.args['underlying_token']
                 recipient = event.args['to']
                 amount = event.args['amount']
                 print(f"Unwrap Event - Token: {token}, Recipient: {recipient}, Amount: {amount}")
                 withdraw(token, recipient, amount)
-                
     except Exception as e:
         print(f"Failed to scan blocks on {chain} chain: {e}")
 
