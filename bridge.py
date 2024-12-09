@@ -3,6 +3,7 @@ from web3.middleware import geth_poa_middleware  # Necessary for POA chains
 import json
 import sys
 from pathlib import Path
+import time
 
 source_chain = 'avax'
 destination_chain = 'bsc'
@@ -106,12 +107,13 @@ def withdraw(wrapped_token, recipient, amount):
         print(f"Transaction sent with hash: {tx_hash.hex()}")
         receipt = source_w3.eth.wait_for_transaction_receipt(tx_hash)
         print(f"Withdraw transaction successful. TxHash: {tx_hash.hex()}, Block: {receipt.blockNumber}")
+        
+        # Add a small delay to ensure the block is mined and indexed
+        time.sleep(2)
     except Exception as e:
         print(f"Failed to send withdraw transaction: {e}")
-        # Print more detailed error information
         import traceback
         print(traceback.format_exc())
-
 
 def scanBlocks(chain):
     """
@@ -154,9 +156,8 @@ def scanBlocks(chain):
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
-                # Updated to match the actual Unwrap event parameters
-                wrapped_token = event.args['wrapped_token']  # Changed from 'wrappedToken'
-                recipient = event.args['to']  # Changed from 'recipient'
+                wrapped_token = event.args['wrapped_token']
+                recipient = event.args['to']
                 amount = event.args['amount']
                 print(f"Unwrap Event - WrappedToken: {wrapped_token}, Recipient: {recipient}, Amount: {amount}")
                 withdraw(wrapped_token, recipient, amount)
