@@ -143,7 +143,7 @@ def scanBlocks(chain):
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
-                token = event.args['underlying_token']
+                token = event.args['token']
                 recipient = event.args['recipient']
                 amount = event.args['amount']
                 print(f"Deposit Event - Token: {token}, Recipient: {recipient}, Amount: {amount}")
@@ -155,8 +155,8 @@ def scanBlocks(chain):
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
-                # Use wrapped_token instead of underlying_token
-                token = event.args['underlying_token']  # This is the key change!
+                # Use wrapped_token for withdrawal because that's what needs to be burned
+                token = event.args['wrapped_token']
                 recipient = event.args['to']
                 amount = event.args['amount']
                 print(f"Unwrap Event - Token: {token}, Recipient: {recipient}, Amount: {amount}")
