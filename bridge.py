@@ -38,7 +38,6 @@ def wrap(token, recipient, amount):
     Calls the wrap function on the destination contract.
     """
     try:
-        # Load destination contract info
         dest_info = getContractInfo('destination')
         dest_w3 = connectTo(destination_chain)
         dest_contract = dest_w3.eth.contract(
@@ -46,11 +45,9 @@ def wrap(token, recipient, amount):
             abi=dest_info['abi']
         )
 
-        # Load destination private key
         DEST_PRIVATE_KEY = "0x9ead96f0d944bb419abaf49efa5f54a77a37754f398651c984eb156a867327e0"
         dest_account = dest_w3.eth.account.from_key(DEST_PRIVATE_KEY)
 
-        # Build and send the wrap transaction
         tx = dest_contract.functions.wrap(
             Web3.to_checksum_address(token),
             Web3.to_checksum_address(recipient),
@@ -58,7 +55,7 @@ def wrap(token, recipient, amount):
         ).build_transaction({
             'from': dest_account.address,
             'nonce': dest_w3.eth.get_transaction_count(dest_account.address, 'pending'),
-            'gas': 500_000,  # Adjust gas if needed
+            'gas': 500_000,
             'gasPrice': dest_w3.eth.gas_price,
             'chainId': dest_w3.eth.chain_id,
         })
@@ -74,7 +71,6 @@ def withdraw(wrapped_token, recipient, amount):
     Calls the withdraw function on the source contract to release the original tokens.
     """
     try:
-        # Load source contract info
         source_info = getContractInfo('source')
         source_w3 = connectTo(source_chain)
         source_contract = source_w3.eth.contract(
@@ -84,11 +80,9 @@ def withdraw(wrapped_token, recipient, amount):
 
         print(f"Attempting withdrawal - Token: {wrapped_token}, Recipient: {recipient}, Amount: {amount}")
         
-        # Load source private key
         SOURCE_PRIVATE_KEY = "0x1860b0c86a901ab4e4ef4338338d884da3486abbe5f13a4cb9ac7bc61346a070"
         source_account = source_w3.eth.account.from_key(SOURCE_PRIVATE_KEY)
 
-        # Build and send the withdraw transaction
         tx = source_contract.functions.withdraw(
             Web3.to_checksum_address(wrapped_token),
             Web3.to_checksum_address(recipient),
@@ -101,15 +95,12 @@ def withdraw(wrapped_token, recipient, amount):
             'chainId': source_w3.eth.chain_id
         })
         
-        print(f"Transaction built successfully")
         signed_tx = source_w3.eth.account.sign_transaction(tx, private_key=SOURCE_PRIVATE_KEY)
         tx_hash = source_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        print(f"Transaction sent with hash: {tx_hash.hex()}")
         receipt = source_w3.eth.wait_for_transaction_receipt(tx_hash)
         print(f"Withdraw transaction successful. TxHash: {tx_hash.hex()}, Block: {receipt.blockNumber}")
         
-        # Add a small delay to ensure the block is mined and indexed
-        time.sleep(2)
+        time.sleep(2)  # Delay to ensure block indexing
     except Exception as e:
         print(f"Failed to send withdraw transaction: {e}")
         import traceback
@@ -124,7 +115,6 @@ def scanBlocks(chain):
         return
 
     try:
-        # Load contract info
         contract_info = getContractInfo(chain)
         w3 = connectTo(source_chain if chain == 'source' else destination_chain)
         contract = w3.eth.contract(
@@ -132,12 +122,10 @@ def scanBlocks(chain):
             abi=contract_info['abi']
         )
 
-        # Fetch latest block number
         latest_block = w3.eth.get_block_number()
         print(f"Scanning blocks {max(latest_block - 5, 1)} to {latest_block} on {chain} chain...")
 
         if chain == 'source':
-            # Listen for Deposit events
             events = contract.events.Deposit.create_filter(
                 fromBlock=max(latest_block - 5, 1),
                 toBlock='latest'
@@ -155,15 +143,14 @@ def scanBlocks(chain):
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
-                # Use underlying_token because that's what needs to be released on Source
-                token = event.args['underlying_token']  # Changed to underlying_token
-                recipient = event.args['to']
+                wrapped_token = event.args['wrapped_token']  # Correct key for Unwrap event
+                recipient = event.args['to']  # Correct key for recipient
                 amount = event.args['amount']
-                print(f"Unwrap Event - Token: {token}, Recipient: {recipient}, Amount: {amount}")
-                withdraw(token, recipient, amount)
+                print(f"Unwrap Event - Token: {wrapped_token}, Recipient: {recipient}, Amount: {amount}")
+                withdraw(wrapped_token, recipient, amount)
     except Exception as e:
         print(f"Failed to scan blocks on {chain} chain: {e}")
 
-# if __name__ == "__main__":
-#     scanBlocks('source')
-#     scanBlocks('destination')
+if __name__ == "__main__":
+    scanBlocks('source')
+    scanBlocks('destination')
