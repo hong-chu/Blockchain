@@ -137,6 +137,7 @@ def scanBlocks(chain):
                 amount = event.args['amount']
                 print(f"Deposit Event - Token: {token}, Recipient: {recipient}, Amount: {amount}")
                 wrap(token, recipient, amount)
+
         elif chain == 'destination':
             # Listen for Unwrap events
             events = contract.events.Unwrap.create_filter(
@@ -144,11 +145,12 @@ def scanBlocks(chain):
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
+                # Ensure correct field names based on ABI
                 wrapped_token = event.args['wrapped_token']
-                recipient = event.args['to']
+                recipient = event.args['to']  # Typically 'to' refers to the recipient
                 amount = event.args['amount']
                 print(f"Unwrap Event - WrappedToken: {wrapped_token}, Recipient: {recipient}, Amount: {amount}")
-                withdraw(wrapped_token, recipient, amount)
+                withdraw(wrapped_token, recipient, amount)  # Call withdraw with the correct parameters
     except Exception as e:
         print(f"Failed to scan blocks on {chain} chain: {e}")
 
