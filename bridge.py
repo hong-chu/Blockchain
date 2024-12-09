@@ -81,6 +81,8 @@ def withdraw(wrapped_token, recipient, amount):
             abi=source_info['abi']
         )
 
+        print(f"Attempting withdrawal - Token: {wrapped_token}, Recipient: {recipient}, Amount: {amount}")
+        
         # Load source private key
         SOURCE_PRIVATE_KEY = "0x1860b0c86a901ab4e4ef4338338d884da3486abbe5f13a4cb9ac7bc61346a070"
         source_account = source_w3.eth.account.from_key(SOURCE_PRIVATE_KEY)
@@ -93,16 +95,23 @@ def withdraw(wrapped_token, recipient, amount):
         ).build_transaction({
             'from': source_account.address,
             'nonce': source_w3.eth.get_transaction_count(source_account.address, 'pending'),
-            'gas': 500_000,  # Adjust gas if needed
+            'gas': 500_000,
             'gasPrice': source_w3.eth.gas_price,
             'chainId': source_w3.eth.chain_id
         })
+        
+        print(f"Transaction built successfully")
         signed_tx = source_w3.eth.account.sign_transaction(tx, private_key=SOURCE_PRIVATE_KEY)
         tx_hash = source_w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        print(f"Transaction sent with hash: {tx_hash.hex()}")
         receipt = source_w3.eth.wait_for_transaction_receipt(tx_hash)
         print(f"Withdraw transaction successful. TxHash: {tx_hash.hex()}, Block: {receipt.blockNumber}")
     except Exception as e:
         print(f"Failed to send withdraw transaction: {e}")
+        # Print more detailed error information
+        import traceback
+        print(traceback.format_exc())
+
 
 def scanBlocks(chain):
     """
@@ -145,13 +154,13 @@ def scanBlocks(chain):
                 toBlock='latest'
             ).get_all_entries()
             for event in events:
-                # Updated to match standard Unwrap event parameters
-                wrapped_token = event.args['wrappedToken']  # Changed from 'wrapped_token'
-                recipient = event.args['recipient']  # Changed from 'to'
+                # Updated to match the actual Unwrap event parameters
+                wrapped_token = event.args['wrapped_token']  # Changed from 'wrappedToken'
+                recipient = event.args['to']  # Changed from 'recipient'
                 amount = event.args['amount']
                 print(f"Unwrap Event - WrappedToken: {wrapped_token}, Recipient: {recipient}, Amount: {amount}")
                 withdraw(wrapped_token, recipient, amount)
-
+                
     except Exception as e:
         print(f"Failed to scan blocks on {chain} chain: {e}")
 
